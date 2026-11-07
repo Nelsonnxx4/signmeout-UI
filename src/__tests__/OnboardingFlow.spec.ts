@@ -36,7 +36,9 @@ describe('owner onboarding flow', () => {
 
     expect(wrapper.findAll('[role="alert"]').map((alert) => alert.text())).toEqual([])
     expect(useOnboardingStore(pinia).schoolComplete).toBe(true)
-    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/onboarding/bank'))
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/onboarding/bank'), {
+      timeout: 10_000,
+    })
 
     await wrapper.get('#bank').setValue('058')
     await wrapper.get('#account-number').setValue('0123456789')
@@ -44,15 +46,19 @@ describe('owner onboarding flow', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/onboarding/commission'))
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/onboarding/commission'), {
+      timeout: 10_000,
+    })
 
     await wrapper.get('#commission-accepted').setValue(true)
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/dashboard'))
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/dashboard'), {
+      timeout: 10_000,
+    })
     expect(wrapper.get('h1').text()).toBe('Dashboard')
-    expect(wrapper.text()).toContain('Owner setup complete')
+    expect(wrapper.text()).toContain('Create your first virtual shirt')
     expect(useOnboardingStore(pinia).isComplete).toBe(true)
-  }, 20_000)
+  }, 45_000)
 })

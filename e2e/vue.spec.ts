@@ -39,5 +39,39 @@ test('completes the owner onboarding steps', async ({ page }) => {
   await page.getByRole('button', { name: 'Finish setup' }).click()
 
   await expect(page).toHaveURL(/\/dashboard$/)
-  await expect(page.getByText('Owner setup complete')).toBeVisible()
+  await expect(page.getByText('Create your first virtual shirt')).toBeVisible()
+})
+
+test('creates and publishes a fixed short-sleeve shirt', async ({ page }) => {
+  await page.addInitScript(() => {
+    sessionStorage.setItem(
+      'signmeout:onboarding-draft',
+      JSON.stringify({
+        school: 'University of Lagos',
+        department: 'Computer Science',
+        schoolComplete: true,
+        bankCode: '058',
+        bankName: 'Guaranty Trust Bank',
+        accountLast4: '6789',
+        accountName: 'Nelson Orhembetyoga',
+        bankComplete: true,
+        commissionAccepted: true,
+        commissionAcceptedAt: new Date().toISOString(),
+        commissionPolicyVersion: 'mvp-1.0',
+      }),
+    )
+  })
+
+  await page.goto('/shirts/new')
+  await page.getByRole('radio', { name: /Short-sleeve T-shirt/ }).check()
+  await page.getByRole('button', { name: 'Create draft' }).click()
+
+  await expect(page).toHaveURL(/\/shirts\/.+\/edit$/)
+  await expect(page.getByRole('heading', { name: 'Short-sleeve T-shirt' })).toBeVisible()
+  await page.getByRole('link', { name: 'Preview shirt' }).click()
+
+  await expect(page).toHaveURL(/\/shirts\/.+\/preview$/)
+  await page.getByRole('button', { name: 'Publish shirt' }).click()
+  await expect(page.getByRole('link', { name: 'View public shirt' })).toBeVisible()
+  await expect(page.getByLabel('Public shirt link')).toHaveValue(/\/s\/shirt/)
 })
