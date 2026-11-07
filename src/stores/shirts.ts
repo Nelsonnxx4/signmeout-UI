@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { SHIRT_TYPES, type Shirt, type ShirtType } from '@/types/shirt'
 
 const STORAGE_KEY = 'signmeout:shirt-drafts'
-const MODEL_VERSION = 'fallback-svg-1.0'
+const MODEL_VERSION = 'shirt-glb-1.0'
 
 interface ShirtsState {
   shirts: Shirt[]

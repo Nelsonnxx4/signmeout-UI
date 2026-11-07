@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Eye, Save } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
-import ShirtPreview from '@/components/shirts/ShirtPreview.vue'
+import ShirtViewer3D from '@/components/shirts/ShirtViewer3D.vue'
 import ShirtStatusBadge from '@/components/shirts/ShirtStatusBadge.vue'
 import { UiButton, buttonVariants } from '@/components/ui/button'
 import { useOnboardingStore } from '@/stores/onboarding'
@@ -66,33 +66,11 @@ function saveDraft() {
       <div
         class="overflow-hidden rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)]"
       >
-        <div
-          class="flex items-center justify-between gap-4 border-b border-[var(--border)] p-4 sm:px-5"
-        >
+        <div class="border-b border-[var(--border)] p-4 sm:px-5">
           <p class="text-sm font-semibold text-[var(--text)]">Garment view</p>
-          <div
-            class="flex rounded-[var(--radius-small)] bg-[var(--raised)] p-1"
-            aria-label="Garment side"
-          >
-            <button
-              v-for="side in ['front', 'back'] as ShirtView[]"
-              :key="side"
-              type="button"
-              :aria-pressed="activeView === side"
-              :class="[
-                'h-9 rounded-md px-4 text-sm font-semibold capitalize outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]',
-                activeView === side
-                  ? 'bg-[var(--surface)] text-[var(--text)]'
-                  : 'text-[var(--muted)] hover:text-[var(--text)]',
-              ]"
-              @click="activeView = side"
-            >
-              {{ side }}
-            </button>
-          </div>
         </div>
 
-        <ShirtPreview :type="shirt.type" :view="activeView" />
+        <ShirtViewer3D v-model:view="activeView" :type="shirt.type" />
       </div>
 
       <aside class="grid gap-5">
@@ -134,11 +112,11 @@ function saveDraft() {
           aria-labelledby="model-heading"
         >
           <h2 id="model-heading" class="text-base font-semibold text-[var(--text)]">
-            3D model status
+            Signing surfaces
           </h2>
           <p class="mt-2 text-sm leading-6 text-[var(--muted)]">
-            This is the accessible front/back fallback. The final GLB model will add rotation, zoom,
-            UV-mapped signatures, and touch gestures without changing the shirt record.
+            The front, back, and both sides of each sleeve are UV-mapped for signatures. Seams,
+            hems, collar details, buttons, placket, and cuffs stay protected.
           </p>
         </section>
 

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ArrowLeftRight, Gift, PenLine } from '@lucide/vue'
+import { Gift, PenLine } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import SignMeOutLogo from '@/components/SignMeOutLogo.vue'
-import ShirtPreview from '@/components/shirts/ShirtPreview.vue'
+import ShirtViewer3D from '@/components/shirts/ShirtViewer3D.vue'
 import { UiButton, buttonVariants } from '@/components/ui/button'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { useShirtsStore } from '@/stores/shirts'
@@ -41,20 +41,10 @@ const activeView = ref<ShirtView>('front')
         <section
           class="overflow-hidden rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)]"
         >
-          <div
-            class="flex items-center justify-between gap-4 border-b border-[var(--border)] p-4 sm:px-5"
-          >
+          <div class="border-b border-[var(--border)] p-4 sm:px-5">
             <p class="text-sm font-semibold text-[var(--text)]">{{ definition.name }}</p>
-            <button
-              type="button"
-              class="inline-flex h-10 items-center gap-2 rounded-[var(--radius-small)] px-3 text-sm font-semibold text-[var(--text)] outline-none hover:bg-[var(--raised)] focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
-              @click="activeView = activeView === 'front' ? 'back' : 'front'"
-            >
-              <ArrowLeftRight class="size-4" aria-hidden="true" />
-              Show {{ activeView === 'front' ? 'back' : 'front' }}
-            </button>
           </div>
-          <ShirtPreview :type="publishedShirt.type" :view="activeView" />
+          <ShirtViewer3D v-model:view="activeView" :type="publishedShirt.type" />
         </section>
 
         <section class="pt-1 lg:sticky lg:top-8">

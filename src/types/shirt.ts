@@ -3,6 +3,13 @@ export const SHIRT_TYPES = ['short-sleeve', 'long-sleeve'] as const
 export type ShirtType = (typeof SHIRT_TYPES)[number]
 export type ShirtStatus = 'draft' | 'published'
 export type ShirtView = 'front' | 'back'
+export type ShirtSignableSurface =
+  | 'front'
+  | 'back'
+  | 'left-sleeve-front'
+  | 'right-sleeve-front'
+  | 'left-sleeve-back'
+  | 'right-sleeve-back'
 
 export interface Shirt {
   id: string

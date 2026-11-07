@@ -3,7 +3,7 @@ import { ArrowLeft, Check, Copy, ExternalLink, Send } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
-import ShirtPreview from '@/components/shirts/ShirtPreview.vue'
+import ShirtViewer3D from '@/components/shirts/ShirtViewer3D.vue'
 import ShirtStatusBadge from '@/components/shirts/ShirtStatusBadge.vue'
 import { UiButton, buttonVariants } from '@/components/ui/button'
 import { UiInput } from '@/components/ui/input'
@@ -97,32 +97,10 @@ async function copyLink() {
       <div
         class="overflow-hidden rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)]"
       >
-        <div
-          class="flex items-center justify-between gap-4 border-b border-[var(--border)] p-4 sm:px-5"
-        >
+        <div class="border-b border-[var(--border)] p-4 sm:px-5">
           <p class="text-sm font-semibold text-[var(--text)]">{{ definition.name }}</p>
-          <div
-            class="flex rounded-[var(--radius-small)] bg-[var(--raised)] p-1"
-            aria-label="Preview side"
-          >
-            <button
-              v-for="side in ['front', 'back'] as ShirtView[]"
-              :key="side"
-              type="button"
-              :aria-pressed="activeView === side"
-              :class="[
-                'h-9 rounded-md px-4 text-sm font-semibold capitalize outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]',
-                activeView === side
-                  ? 'bg-[var(--surface)] text-[var(--text)]'
-                  : 'text-[var(--muted)]',
-              ]"
-              @click="activeView = side"
-            >
-              {{ side }}
-            </button>
-          </div>
         </div>
-        <ShirtPreview :type="shirt.type" :view="activeView" />
+        <ShirtViewer3D v-model:view="activeView" :type="shirt.type" />
       </div>
 
       <aside class="grid gap-5">

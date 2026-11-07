@@ -16,6 +16,7 @@ describe('shirts store', () => {
     const shortSleeve = shirts.createDraft('short-sleeve')
 
     expect(shortSleeve.status).toBe('draft')
+    expect(shortSleeve.modelVersion).toBe('shirt-glb-1.0')
     expect(shirts.availableTypes).toEqual(['long-sleeve'])
     expect(() => shirts.createDraft('short-sleeve')).toThrow('You already have this shirt type.')
 
