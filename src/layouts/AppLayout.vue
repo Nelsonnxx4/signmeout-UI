@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboard, Shirt as ShirtIcon, Wallet } from '@lucide/vue'
+import { Cog, LayoutDashboard, Shirt as ShirtIcon, Wallet } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 
@@ -47,11 +47,18 @@ const currentTitle = computed(() =>
         </RouterLink>
       </nav>
 
-      <div class="mt-auto border-t border-[var(--border)] p-5">
-        <p class="text-sm font-semibold text-[var(--text)]">Owner workspace</p>
-        <p class="mt-1 truncate text-xs text-[var(--muted)]">
-          {{ onboarding.school || 'School details not added' }}
+      <div class="mt-auto border-t border-[var(--border)] p-4">
+        <p class="mb-3 truncate px-1 text-xs text-[var(--muted)]">
+          {{ onboarding.school || 'Owner workspace' }}
         </p>
+        <RouterLink
+          to="/settings/profile"
+          class="flex h-10 items-center gap-3 rounded-[var(--radius-small)] px-3 text-sm font-medium text-[var(--muted)] outline-none transition-colors hover:bg-[var(--raised)] hover:text-[var(--text)] focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
+          active-class="!bg-[var(--brand-soft)] !font-semibold !text-[var(--text)]"
+        >
+          <Cog class="size-4.5 stroke-[1.8]" aria-hidden="true" />
+          Profile & settings
+        </RouterLink>
       </div>
     </aside>
 
@@ -70,9 +77,18 @@ const currentTitle = computed(() =>
           </p>
         </div>
 
-        <p class="truncate text-sm font-semibold text-[var(--muted)] md:text-[var(--text)]">
-          {{ currentTitle }}
-        </p>
+        <div class="flex items-center gap-3">
+          <p class="truncate text-sm font-semibold text-[var(--muted)] md:text-[var(--text)]">
+            {{ currentTitle }}
+          </p>
+          <RouterLink
+            to="/settings/profile"
+            class="rounded-[var(--radius-small)] p-2 text-[var(--muted)] outline-none hover:bg-[var(--raised)] hover:text-[var(--text)] focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] md:hidden"
+            aria-label="Profile and settings"
+          >
+            <Cog class="size-5" aria-hidden="true" />
+          </RouterLink>
+        </div>
       </div>
     </header>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight, BookOpen, School } from '@lucide/vue'
 import { useField, useForm } from 'vee-validate'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { z } from 'zod'
 
@@ -8,22 +9,30 @@ import { UiButton } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form'
 import { UiInput } from '@/components/ui/input'
 import { UiSelect } from '@/components/ui/select'
-import { DEPARTMENT_OPTIONS, OTHER_OPTION, SCHOOL_OPTIONS } from '@/data/onboardingOptions'
+import { OTHER_OPTION } from '@/data/onboardingOptions'
+import { apiRequest } from '@/lib/api'
 import { toFieldValidator } from '@/lib/validation'
 import { useOnboardingStore } from '@/stores/onboarding'
 
 const router = useRouter()
 const onboarding = useOnboardingStore()
 
-const hasKnownSchool = SCHOOL_OPTIONS.some((option) => option === onboarding.school)
-const hasKnownDepartment = DEPARTMENT_OPTIONS.some((option) => option === onboarding.department)
+interface SchoolOption {
+  id: string
+  name: string
+}
 
-const initialSchool = hasKnownSchool ? onboarding.school : onboarding.school ? OTHER_OPTION : ''
-const initialDepartment = hasKnownDepartment
-  ? onboarding.department
-  : onboarding.department
-    ? OTHER_OPTION
-    : ''
+interface DepartmentOption {
+  id: string
+  name: string
+}
+
+const schools = ref<SchoolOption[]>([])
+const departments = ref<DepartmentOption[]>([])
+const loadingOptions = ref(true)
+const requestError = ref('')
+const hasKnownSchool = ref(false)
+const hasKnownDepartment = ref(false)
 
 const requiredSelection = (field: string) =>
   toFieldValidator(z.string().min(1, `Choose your ${field}.`))
@@ -34,10 +43,10 @@ const customValue = (field: string) =>
 
 const { handleSubmit, isSubmitting } = useForm({
   initialValues: {
-    school: initialSchool,
-    otherSchool: hasKnownSchool ? '' : onboarding.school,
-    department: initialDepartment,
-    otherDepartment: hasKnownDepartment ? '' : onboarding.department,
+    school: onboarding.school,
+    otherSchool: '',
+    department: onboarding.department,
+    otherDepartment: '',
   },
 })
 
@@ -68,13 +77,105 @@ const {
   return customValue('department name')(value)
 })
 
-const submit = handleSubmit(async () => {
-  onboarding.saveSchool({
-    school: school.value === OTHER_OPTION ? otherSchool.value.trim() : school.value,
-    department: department.value === OTHER_OPTION ? otherDepartment.value.trim() : department.value,
-  })
+async function loadDepartments(schoolName: string) {
+  const selectedSchool = schools.value.find((option) => option.name === schoolName)
+  const nextDepartments = selectedSchool
+    ? await apiRequest<DepartmentOption[]>(
+        `/schools/${encodeURIComponent(selectedSchool.id)}/departments`,
+      )
+    : []
+  if (school.value !== schoolName) return
+  departments.value = nextDepartments
+  hasKnownDepartment.value = departments.value.some(
+    (option) => option.name === onboarding.department,
+  )
+}
 
-  await router.push('/onboarding/student')
+watch(school, async (value) => {
+  requestError.value = ''
+  department.value = ''
+  departments.value = []
+  hasKnownSchool.value = schools.value.some((option) => option.name === value)
+  if (value && value !== OTHER_OPTION) {
+    try {
+      await loadDepartments(value)
+    } catch (error) {
+      requestError.value =
+        error instanceof Error ? error.message : 'Could not load departments for this school.'
+    }
+  }
+})
+
+onMounted(async () => {
+  try {
+    schools.value = await apiRequest<SchoolOption[]>('/schools')
+    hasKnownSchool.value = schools.value.some((option) => option.name === onboarding.school)
+    if (onboarding.school && !hasKnownSchool.value) {
+      school.value = OTHER_OPTION
+      otherSchool.value = onboarding.school
+    }
+    if (hasKnownSchool.value) {
+      await loadDepartments(onboarding.school)
+      hasKnownDepartment.value = departments.value.some(
+        (option) => option.name === onboarding.department,
+      )
+      if (onboarding.department && !hasKnownDepartment.value) {
+        department.value = OTHER_OPTION
+        otherDepartment.value = onboarding.department
+      }
+    } else if (onboarding.department) {
+      department.value = OTHER_OPTION
+      otherDepartment.value = onboarding.department
+    }
+  } catch (error) {
+    requestError.value = error instanceof Error ? error.message : 'Could not load schools.'
+  } finally {
+    loadingOptions.value = false
+  }
+})
+
+const submit = handleSubmit(async () => {
+  const selectedSchool = schools.value.find((option) => option.name === school.value)
+  const selectedDepartment = departments.value.find((option) => option.name === department.value)
+  const payload: {
+    schoolId?: string
+    customSchoolName?: string
+    departmentId?: string
+    customDepartmentName?: string
+  } = {
+    ...(school.value === OTHER_OPTION
+      ? { customSchoolName: otherSchool.value.trim() }
+      : selectedSchool?.id
+        ? { schoolId: selectedSchool.id }
+        : {}),
+    ...(department.value === OTHER_OPTION
+      ? { customDepartmentName: otherDepartment.value.trim() }
+      : selectedDepartment?.id
+        ? { departmentId: selectedDepartment.id }
+        : {}),
+  }
+
+  if (!payload.schoolId && !payload.customSchoolName) {
+    requestError.value = 'Choose a school from the server list or enter another school.'
+    return
+  }
+  if (!payload.departmentId && !payload.customDepartmentName) {
+    requestError.value = 'Choose a department from the selected school or enter another department.'
+    return
+  }
+
+  requestError.value = ''
+  try {
+    await apiRequest('/onboarding/profile', { method: 'PATCH', body: JSON.stringify(payload) })
+    onboarding.saveSchool({
+      school: selectedSchool?.name ?? otherSchool.value.trim(),
+      department: selectedDepartment?.name ?? otherDepartment.value.trim(),
+    })
+    await router.push('/onboarding/student')
+  } catch (error) {
+    requestError.value =
+      error instanceof Error ? error.message : 'Could not save your school details.'
+  }
 })
 </script>
 
@@ -89,6 +190,12 @@ const submit = handleSubmit(async () => {
     </p>
 
     <form class="mt-8 grid gap-6" novalidate @submit="submit">
+      <p v-if="loadingOptions" class="text-sm text-[var(--muted)]" role="status">
+        Loading schools…
+      </p>
+      <p v-if="requestError" role="alert" class="text-sm font-medium text-[var(--negative)]">
+        {{ requestError }}
+      </p>
       <FormField
         v-slot="{ messageId }"
         for="school"
@@ -108,8 +215,8 @@ const submit = handleSubmit(async () => {
         >
           <template #leading><School /></template>
           <option value="" disabled>Choose your school</option>
-          <option v-for="option in SCHOOL_OPTIONS" :key="option" :value="option">
-            {{ option }}
+          <option v-for="option in schools" :key="option.id" :value="option.name">
+            {{ option.name }}
           </option>
           <option :value="OTHER_OPTION">My school isn’t listed</option>
         </UiSelect>
@@ -155,8 +262,8 @@ const submit = handleSubmit(async () => {
         >
           <template #leading><BookOpen /></template>
           <option value="" disabled>Choose your department</option>
-          <option v-for="option in DEPARTMENT_OPTIONS" :key="option" :value="option">
-            {{ option }}
+          <option v-for="option in departments" :key="option.id" :value="option.name">
+            {{ option.name }}
           </option>
           <option :value="OTHER_OPTION">My department isn’t listed</option>
         </UiSelect>
@@ -188,7 +295,8 @@ const submit = handleSubmit(async () => {
         variant="primary"
         size="lg"
         full-width
-        :loading="isSubmitting"
+        :loading="isSubmitting || loadingOptions"
+        :disabled="loadingOptions || Boolean(requestError)"
         class="mt-1 justify-between sm:ml-auto sm:w-auto"
       >
         Continue to student details

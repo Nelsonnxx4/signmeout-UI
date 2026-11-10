@@ -1,7 +1,7 @@
 export const SHIRT_TYPES = ['short-sleeve', 'long-sleeve'] as const
 
 export type ShirtType = (typeof SHIRT_TYPES)[number]
-export type ShirtStatus = 'draft' | 'published'
+export type ShirtStatus = 'draft' | 'published' | 'full' | 'archived'
 export type ShirtView = 'front' | 'back'
 export type ShirtSignableSurface =
   | 'front'
@@ -20,6 +20,7 @@ export interface Shirt {
   createdAt: string
   updatedAt: string
   publishedAt: string | null
+  shareUrl?: string
 }
 
 export interface ShirtTypeDefinition {

@@ -2,9 +2,11 @@
 import { ArrowRight, CircleCheck, Mail } from '@lucide/vue'
 import { useField, useForm } from 'vee-validate'
 import { nextTick, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { z } from 'zod'
 
+import { sendSignInCode, signInWithGoogle, verifySignInCode } from '@/lib/auth'
+import { useAuthStore } from '@/stores/auth'
 import { UiButton } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form'
 import { UiInput } from '@/components/ui/input'
@@ -29,9 +31,8 @@ const props = withDefaults(defineProps<Props>(), {
   recoveryTo: undefined,
 })
 
-const emit = defineEmits<{
-  submit: [payload: { email: string; intent: AuthIntent }]
-}>()
+const router = useRouter()
+const auth = useAuthStore()
 
 const emailSchema = z
   .string()
@@ -59,28 +60,79 @@ const {
 
 const isSent = ref(false)
 const resent = ref(false)
+const isVerified = ref(false)
 const submittedEmail = ref('')
+const otp = ref('')
+const requestError = ref('')
+const isSending = ref(false)
+const isVerifying = ref(false)
 const successPanel = ref<HTMLElement | null>(null)
 
 const submit = handleSubmit(async (values) => {
   submittedEmail.value = values.email.trim()
-  emit('submit', { email: submittedEmail.value, intent: props.intent })
-  isSent.value = true
+  requestError.value = ''
+  isSending.value = true
+  try {
+    await sendSignInCode(submittedEmail.value)
+    isSent.value = true
+  } catch (error) {
+    requestError.value =
+      error instanceof Error ? error.message : 'Could not send your sign-in code.'
+  } finally {
+    isSending.value = false
+  }
 
   await nextTick()
   successPanel.value?.focus()
 })
 
+async function verifyCode() {
+  requestError.value = ''
+  if (!/^\d{6}$/.test(otp.value)) {
+    requestError.value = 'Enter the 6-digit code from your email.'
+    return
+  }
+
+  isVerifying.value = true
+  try {
+    await verifySignInCode(submittedEmail.value, otp.value)
+    await auth.loadSession(true)
+    isVerified.value = true
+    await router.replace('/dashboard')
+  } catch (error) {
+    requestError.value = error instanceof Error ? error.message : 'Could not verify the code.'
+  } finally {
+    isVerifying.value = false
+  }
+}
+
 function useAnotherEmail() {
   isSent.value = false
   resent.value = false
+  isVerified.value = false
   submittedEmail.value = ''
+  otp.value = ''
+  requestError.value = ''
   resetField({ value: '' })
 }
 
-function resendLink() {
-  emit('submit', { email: submittedEmail.value, intent: props.intent })
-  resent.value = true
+async function resendLink() {
+  requestError.value = ''
+  try {
+    await sendSignInCode(submittedEmail.value)
+    resent.value = true
+  } catch (error) {
+    requestError.value = error instanceof Error ? error.message : 'Could not resend your code.'
+  }
+}
+
+async function googleSignIn() {
+  requestError.value = ''
+  try {
+    await signInWithGoogle(`${window.location.origin}/dashboard`)
+  } catch (error) {
+    requestError.value = error instanceof Error ? error.message : 'Could not start Google sign-in.'
+  }
 }
 </script>
 
@@ -139,13 +191,24 @@ function resendLink() {
           variant="primary"
           size="lg"
           full-width
-          :loading="isSubmitting"
+          :loading="isSubmitting || isSending"
           class="mt-6 justify-between"
         >
-          {{ props.submitLabel }}
-          <ArrowRight v-if="!isSubmitting" aria-hidden="true" />
+          Email me a verification code
+          <ArrowRight v-if="!isSubmitting && !isSending" aria-hidden="true" />
         </UiButton>
       </form>
+
+      <div class="my-5 flex items-center gap-3 text-xs text-[var(--muted)]">
+        <span class="h-px flex-1 bg-[var(--border)]" />
+        or
+        <span class="h-px flex-1 bg-[var(--border)]" />
+      </div>
+      <UiButton size="lg" full-width @click="googleSignIn">Continue with Google</UiButton>
+
+      <p v-if="requestError" role="alert" class="mt-4 text-sm font-medium text-[var(--negative)]">
+        {{ requestError }}
+      </p>
 
       <p class="mt-8 text-center text-sm text-[var(--muted)]">
         {{ props.alternateText }}
@@ -163,24 +226,58 @@ function resendLink() {
       <h1
         class="mt-5 text-[2rem] font-semibold leading-tight tracking-[-0.035em] text-[var(--text)]"
       >
-        {{ props.sentTitle }}
+        {{ isVerified ? 'You’re signed in' : props.sentTitle }}
       </h1>
       <p class="mt-3 text-base leading-7 text-[var(--muted)]">
-        {{ props.sentDescription }}
-        <strong class="font-semibold text-[var(--text)]">{{ submittedEmail }}</strong>
+        <template v-if="!isVerified">
+          {{ props.sentDescription }}
+          <strong class="font-semibold text-[var(--text)]">{{ submittedEmail }}</strong>
+        </template>
+        <template v-else>Taking you to your workspace…</template>
       </p>
 
-      <div class="mt-8 grid gap-3 sm:grid-cols-2">
-        <UiButton variant="primary" size="lg" @click="useAnotherEmail">
-          Use another email
+      <form v-if="!isVerified" class="mt-8 grid gap-4" @submit.prevent="verifyCode">
+        <FormField
+          v-slot="{ messageId }"
+          for="verification-code"
+          label="Verification code"
+          hint="Enter the 6-digit code. It expires in 5 minutes."
+          required
+        >
+          <UiInput
+            id="verification-code"
+            v-model="otp"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="6"
+            placeholder="000000"
+            :aria-describedby="messageId"
+          />
+        </FormField>
+        <p v-if="requestError" role="alert" class="text-sm font-medium text-[var(--negative)]">
+          {{ requestError }}
+        </p>
+        <UiButton
+          type="submit"
+          variant="primary"
+          size="lg"
+          full-width
+          :loading="isVerifying"
+          class="justify-between"
+        >
+          Verify and sign in
+          <ArrowRight v-if="!isVerifying" aria-hidden="true" />
         </UiButton>
-        <UiButton size="lg" :disabled="resent" @click="resendLink">
-          {{ resent ? 'Link requested' : 'Resend link' }}
-        </UiButton>
-      </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <UiButton type="button" size="lg" @click="useAnotherEmail">Use another email</UiButton>
+          <UiButton type="button" size="lg" :disabled="resent" @click="resendLink">
+            {{ resent ? 'Code sent' : 'Resend code' }}
+          </UiButton>
+        </div>
+      </form>
 
-      <p class="mt-6 text-sm leading-6 text-[var(--muted)]">
-        Didn’t receive it? Check your spam folder, then resend the link.
+      <p v-if="!isVerified" class="mt-6 text-sm leading-6 text-[var(--muted)]">
+        Didn’t receive it? Check your spam folder, then resend the code.
       </p>
     </div>
   </section>

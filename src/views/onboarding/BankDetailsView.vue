@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeft, ArrowRight, Hash, Landmark, UserRound } from '@lucide/vue'
 import { useField, useForm } from 'vee-validate'
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { z } from 'zod'
 
@@ -9,12 +9,31 @@ import { UiButton } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form'
 import { UiInput } from '@/components/ui/input'
 import { UiSelect } from '@/components/ui/select'
-import { BANK_OPTIONS } from '@/data/onboardingOptions'
+import { apiRequest } from '@/lib/api'
 import { toFieldValidator } from '@/lib/validation'
 import { useOnboardingStore } from '@/stores/onboarding'
 
 const router = useRouter()
 const onboarding = useOnboardingStore()
+
+interface BankOption {
+  code: string
+  name: string
+}
+
+const banks = ref<BankOption[]>([])
+const loadingBanks = ref(true)
+const requestError = ref('')
+
+onMounted(async () => {
+  try {
+    banks.value = await apiRequest<BankOption[]>('/banks')
+  } catch (error) {
+    requestError.value = error instanceof Error ? error.message : 'Could not load banks.'
+  } finally {
+    loadingBanks.value = false
+  }
+})
 
 const { handleSubmit, isSubmitting } = useForm({
   initialValues: {
@@ -70,17 +89,34 @@ const accountNumberHint = computed(() => {
 })
 
 const submit = handleSubmit(async () => {
-  const selectedBank = BANK_OPTIONS.find((bank) => bank.code === bankCode.value)
-  if (!selectedBank) return
+  const selectedBank = banks.value.find((bank) => bank.code === bankCode.value)
+  if (!selectedBank) {
+    requestError.value = 'Choose a bank from the available list.'
+    return
+  }
 
-  onboarding.saveBank({
-    bankCode: selectedBank.code,
-    bankName: selectedBank.name,
-    accountNumber: accountNumber.value || undefined,
-    accountName: accountName.value.trim(),
-  })
-
-  await router.push('/onboarding/commission')
+  requestError.value = ''
+  try {
+    const resolved = await apiRequest<{ accountName: string }>('/banks/resolve', {
+      method: 'POST',
+      body: JSON.stringify({ accountNumber: accountNumber.value, bankCode: bankCode.value }),
+    })
+    accountName.value = resolved.accountName
+    await apiRequest('/onboarding/bank', {
+      method: 'POST',
+      body: JSON.stringify({ accountNumber: accountNumber.value, bankCode: bankCode.value }),
+    })
+    onboarding.saveBank({
+      bankCode: selectedBank.code,
+      bankName: selectedBank.name,
+      accountNumber: accountNumber.value || undefined,
+      accountName: resolved.accountName,
+    })
+    await router.push('/onboarding/commission')
+  } catch (error) {
+    requestError.value =
+      error instanceof Error ? error.message : 'Could not verify or save this account.'
+  }
 })
 </script>
 
@@ -94,6 +130,10 @@ const submit = handleSubmit(async () => {
     </p>
 
     <form class="mt-8 grid gap-6" novalidate @submit="submit">
+      <p v-if="loadingBanks" class="text-sm text-[var(--muted)]" role="status">Loading banks…</p>
+      <p v-if="requestError" role="alert" class="text-sm font-medium text-[var(--negative)]">
+        {{ requestError }}
+      </p>
       <FormField v-slot="{ messageId }" for="bank" label="Bank" :error="bankError" required>
         <UiSelect
           id="bank"
@@ -105,7 +145,7 @@ const submit = handleSubmit(async () => {
         >
           <template #leading><Landmark /></template>
           <option value="" disabled>Choose your bank</option>
-          <option v-for="bank in BANK_OPTIONS" :key="bank.code" :value="bank.code">
+          <option v-for="bank in banks" :key="bank.code" :value="bank.code">
             {{ bank.name }}
           </option>
         </UiSelect>
@@ -168,7 +208,8 @@ const submit = handleSubmit(async () => {
           type="submit"
           variant="primary"
           size="lg"
-          :loading="isSubmitting"
+          :loading="isSubmitting || loadingBanks"
+          :disabled="loadingBanks || Boolean(requestError)"
           class="justify-between"
         >
           Review commission

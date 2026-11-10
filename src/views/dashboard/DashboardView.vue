@@ -1,20 +1,52 @@
 <script setup lang="ts">
 import { ArrowRight, Eye, PencilLine, Plus, Wallet } from '@lucide/vue'
+import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import ShirtPreview from '@/components/shirts/ShirtPreview.vue'
 import ShirtStatusBadge from '@/components/shirts/ShirtStatusBadge.vue'
 import { buttonVariants } from '@/components/ui/button'
+import { useDashboard } from '@/composables/useDashboard'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { useShirtsStore } from '@/stores/shirts'
 import { SHIRT_TYPE_DEFINITIONS } from '@/types/shirt'
 
 const onboarding = useOnboardingStore()
 const shirts = useShirtsStore()
+const dashboard = useDashboard()
+const { errorMessage: dashboardError, loading: dashboardLoading, summary, transactions } = dashboard
+
+const formatNaira = (amountKobo: number) =>
+  new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 2,
+  }).format(amountKobo / 100)
+
+const formatDate = (value: string) =>
+  new Intl.DateTimeFormat('en-NG', { dateStyle: 'medium' }).format(new Date(value))
+
+onMounted(() => {
+  void Promise.all([shirts.load(), dashboard.load()])
+})
 </script>
 
 <template>
   <section>
+    <p
+      v-if="dashboardLoading || shirts.loading"
+      class="mb-4 text-sm text-[var(--muted)]"
+      role="status"
+    >
+      Loading your account data…
+    </p>
+    <p
+      v-if="dashboardError || shirts.error"
+      role="alert"
+      class="mb-4 text-sm font-medium text-[var(--negative)]"
+    >
+      {{ dashboardError || shirts.error }}
+    </p>
     <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold tracking-[-0.025em] text-[var(--text)]">Dashboard</h1>
@@ -63,11 +95,50 @@ const shirts = useShirtsStore()
       </div>
       <div class="border-r border-[var(--border)] p-4">
         <dt class="text-sm text-[var(--muted)]">Signatures</dt>
-        <dd class="mt-1 text-2xl font-semibold tabular-nums text-[var(--text)]">0</dd>
+        <dd class="mt-1 text-2xl font-semibold tabular-nums text-[var(--text)]">
+          {{ summary?.signatureCount ?? '—' }}
+        </dd>
       </div>
       <div class="p-4">
         <dt class="text-sm text-[var(--muted)]">Gross gifts</dt>
-        <dd class="mt-1 text-2xl font-semibold tabular-nums text-[var(--text)]">₦0</dd>
+        <dd class="mt-1 text-2xl font-semibold tabular-nums text-[var(--text)]">
+          {{ summary ? formatNaira(summary.grossContributionsKobo) : '—' }}
+        </dd>
+      </div>
+    </dl>
+
+    <dl class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div
+        class="rounded-[var(--radius-small)] border border-[var(--border)] bg-[var(--surface)] p-4"
+      >
+        <dt class="text-sm text-[var(--muted)]">Paid contributions</dt>
+        <dd class="mt-1 font-semibold tabular-nums text-[var(--text)]">
+          {{ summary?.successfulContributionCount ?? '—' }}
+        </dd>
+      </div>
+      <div
+        class="rounded-[var(--radius-small)] border border-[var(--border)] bg-[var(--surface)] p-4"
+      >
+        <dt class="text-sm text-[var(--muted)]">Your earnings</dt>
+        <dd class="mt-1 font-semibold tabular-nums text-[var(--text)]">
+          {{ summary ? formatNaira(summary.totalOwnerEarningsKobo) : '—' }}
+        </dd>
+      </div>
+      <div
+        class="rounded-[var(--radius-small)] border border-[var(--border)] bg-[var(--surface)] p-4"
+      >
+        <dt class="text-sm text-[var(--muted)]">Available balance</dt>
+        <dd class="mt-1 font-semibold tabular-nums text-[var(--text)]">
+          {{ summary ? formatNaira(summary.wallet.availableBalance) : '—' }}
+        </dd>
+      </div>
+      <div
+        class="rounded-[var(--radius-small)] border border-[var(--border)] bg-[var(--surface)] p-4"
+      >
+        <dt class="text-sm text-[var(--muted)]">Ledger entries</dt>
+        <dd class="mt-1 font-semibold tabular-nums text-[var(--text)]">
+          {{ transactions.length }}
+        </dd>
       </div>
     </dl>
 
@@ -185,5 +256,37 @@ const shirts = useShirtsStore()
         </RouterLink>
       </section>
     </div>
+
+    <section
+      class="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)]"
+      aria-labelledby="transactions-heading"
+    >
+      <div class="border-b border-[var(--border)] px-5 py-4">
+        <h2 id="transactions-heading" class="text-base font-semibold text-[var(--text)]">
+          Recent ledger activity
+        </h2>
+      </div>
+      <p
+        v-if="!dashboardLoading && transactions.length === 0"
+        class="p-5 text-sm text-[var(--muted)]"
+      >
+        No ledger activity yet. Successful gifts and withdrawals will appear here.
+      </p>
+      <ul v-else class="divide-y divide-[var(--border)]">
+        <li
+          v-for="entry in transactions"
+          :key="entry.id"
+          class="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
+        >
+          <div>
+            <p class="text-sm font-semibold text-[var(--text)]">{{ entry.description }}</p>
+            <p class="mt-1 text-xs text-[var(--muted)]">{{ formatDate(entry.createdAt) }}</p>
+          </div>
+          <p class="text-sm font-semibold tabular-nums text-[var(--text)]">
+            {{ formatNaira(entry.amountKobo) }}
+          </p>
+        </li>
+      </ul>
+    </section>
   </section>
 </template>

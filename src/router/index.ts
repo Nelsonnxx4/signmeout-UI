@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
+import SettingsLayout from '@/layouts/SettingsLayout.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { useShirtsStore } from '@/stores/shirts'
 
@@ -108,19 +110,48 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/views/shirts/ShirtPreviewView.vue'),
         meta: { title: 'Shirt preview', requiresShirt: true },
       },
+      {
+        path: 'settings',
+        component: SettingsLayout,
+        meta: { title: 'Settings' },
+        children: [
+          {
+            path: '',
+            redirect: { name: 'settings-profile' },
+          },
+          {
+            path: 'profile',
+            name: 'settings-profile',
+            component: () => import('@/views/settings/ProfileSettingsView.vue'),
+            meta: { title: 'Profile' },
+          },
+          {
+            path: 'preferences',
+            name: 'settings-account',
+            component: () => import('@/views/settings/AccountSettingsView.vue'),
+            meta: { title: 'Settings' },
+          },
+        ],
+      },
     ],
   },
   {
     path: '/admin/withdrawals',
     name: 'admin-withdrawals',
     component: () => import('@/views/admin/AdminWithdrawalsView.vue'),
-    meta: { title: 'Withdrawal requests' },
+    meta: { title: 'Withdrawal requests', requiresAuth: true },
   },
   {
     path: '/s/:slug',
     name: 'public-shirt',
     component: () => import('@/views/public/PublicShirtView.vue'),
     meta: { title: 'Virtual shirt' },
+  },
+  {
+    path: '/payment/callback',
+    name: 'payment-callback',
+    component: () => import('@/views/public/PaymentCallbackView.vue'),
+    meta: { title: 'Confirm payment' },
   },
   {
     path: '/:pathMatch(.*)*',
@@ -138,36 +169,50 @@ router.beforeEach((to) => {
   const onboardingStep =
     typeof to.meta.onboardingStep === 'number' ? to.meta.onboardingStep : undefined
 
-  if (!onboardingStep && !to.meta.requiresOnboarding && !to.meta.requiresShirt) return true
+  if (!to.meta.requiresAuth && !to.meta.requiresOnboarding && !to.meta.requiresShirt) return true
 
-  const onboarding = useOnboardingStore()
-
-  if (onboardingStep && onboardingStep >= 2 && !onboarding.schoolComplete) {
-    return { name: 'onboarding-school' }
-  }
-
-  if (onboardingStep && onboardingStep >= 3 && !onboarding.studentDetailsComplete) {
-    return { name: 'onboarding-student' }
-  }
-
-  if (onboardingStep && onboardingStep >= 4 && !onboarding.bankComplete) {
-    return { name: 'onboarding-bank' }
-  }
-
-  if (to.meta.requiresOnboarding && !onboarding.isComplete) {
-    return onboarding.nextRoute
-  }
-
-  if (to.meta.requiresShirt) {
-    const shirtId = Array.isArray(to.params.shirtId) ? to.params.shirtId[0] : to.params.shirtId
-    const shirts = useShirtsStore()
-
-    if (!shirtId || !shirts.getById(shirtId)) {
-      return { name: 'shirts' }
+  const auth = useAuthStore()
+  return auth.loadSession().then(async (session) => {
+    if (!session) {
+      return {
+        name: 'login',
+        query: { redirect: to.fullPath },
+      }
     }
-  }
 
-  return true
+    if (!onboardingStep && !to.meta.requiresOnboarding && !to.meta.requiresShirt) return true
+
+    const onboarding = useOnboardingStore()
+    await onboarding.syncFromApi()
+
+    if (onboardingStep && onboardingStep >= 2 && !onboarding.schoolComplete) {
+      return { name: 'onboarding-school' }
+    }
+
+    if (onboardingStep && onboardingStep >= 3 && !onboarding.studentDetailsComplete) {
+      return { name: 'onboarding-student' }
+    }
+
+    if (onboardingStep && onboardingStep >= 4 && !onboarding.bankComplete) {
+      return { name: 'onboarding-bank' }
+    }
+
+    if (to.meta.requiresOnboarding && !onboarding.isComplete) {
+      return onboarding.nextRoute
+    }
+
+    if (to.meta.requiresShirt) {
+      const shirtId = Array.isArray(to.params.shirtId) ? to.params.shirtId[0] : to.params.shirtId
+      const shirts = useShirtsStore()
+      await shirts.load()
+
+      if (!shirtId || !shirts.getById(shirtId)) {
+        return { name: 'shirts' }
+      }
+    }
+
+    return true
+  })
 })
 
 router.afterEach((to) => {

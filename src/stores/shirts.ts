@@ -1,40 +1,59 @@
 import { defineStore } from 'pinia'
 
+import { apiRequest } from '@/lib/api'
 import { SHIRT_TYPES, type Shirt, type ShirtType } from '@/types/shirt'
-
-const STORAGE_KEY = 'signmeout:shirt-drafts'
-const MODEL_VERSION = 'shirt-glb-1.0'
 
 interface ShirtsState {
   shirts: Shirt[]
+  loaded: boolean
+  loading: boolean
+  error: string
 }
 
-function readStoredShirts(): Shirt[] {
-  if (typeof window === 'undefined') return []
+interface ApiShirt {
+  id: string
+  shirtType: 'SHORT_SLEEVE' | 'LONG_SLEEVE'
+  slug: string
+  status: 'ACTIVE' | 'PAUSED' | 'FULL' | 'ARCHIVED'
+  createdAt: string
+  updatedAt: string
+  modelVersion: { version: number; modelKey: string }
+  shareUrl: string
+}
 
-  try {
-    const stored = window.sessionStorage.getItem(STORAGE_KEY)
-    if (!stored) return []
-
-    const parsed: unknown = JSON.parse(stored)
-    return Array.isArray(parsed) ? (parsed as Shirt[]) : []
-  } catch {
-    return []
+function mapShirt(shirt: ApiShirt): Shirt {
+  return {
+    id: shirt.id,
+    type: shirt.shirtType === 'SHORT_SLEEVE' ? 'short-sleeve' : 'long-sleeve',
+    slug: shirt.slug,
+    modelVersion: `shirt-glb-${shirt.modelVersion.version}`,
+    status:
+      shirt.status === 'ACTIVE'
+        ? 'published'
+        : shirt.status === 'FULL'
+          ? 'full'
+          : shirt.status === 'ARCHIVED'
+            ? 'archived'
+            : 'draft',
+    createdAt: shirt.createdAt,
+    updatedAt: shirt.updatedAt,
+    publishedAt: shirt.status === 'ACTIVE' || shirt.status === 'FULL' ? shirt.updatedAt : null,
+    shareUrl: shirt.shareUrl,
   }
-}
-
-function createId(prefix: string) {
-  const value = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-  return `${prefix}-${value}`
 }
 
 export const useShirtsStore = defineStore('shirts', {
   state: (): ShirtsState => ({
-    shirts: readStoredShirts(),
+    shirts: [],
+    loaded: false,
+    loading: false,
+    error: '',
   }),
   getters: {
     shirtCount: (state) => state.shirts.length,
-    publishedCount: (state) => state.shirts.filter((shirt) => shirt.status === 'published').length,
+    publishedCount: (state) =>
+      state.shirts.filter((shirt) => shirt.status === 'published' || shirt.status === 'full')
+        .length,
     canCreate: (state) => state.shirts.length < SHIRT_TYPES.length,
     availableTypes: (state): ShirtType[] =>
       SHIRT_TYPES.filter((type) => !state.shirts.some((shirt) => shirt.type === type)),
@@ -42,11 +61,24 @@ export const useShirtsStore = defineStore('shirts', {
     getBySlug: (state) => (slug: string) => state.shirts.find((shirt) => shirt.slug === slug),
   },
   actions: {
-    persist() {
-      if (typeof window === 'undefined') return
-      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.shirts))
+    async load(force = false) {
+      if (this.loaded && !force) return this.shirts
+      if (this.loading) return this.shirts
+      this.loading = true
+      this.error = ''
+      try {
+        const response = await apiRequest<ApiShirt[]>('/shirts')
+        this.shirts = response.map(mapShirt)
+        this.loaded = true
+        return this.shirts
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : 'Could not load your shirts.'
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
-    createDraft(type: ShirtType) {
+    async createDraft(type: ShirtType) {
       if (!SHIRT_TYPES.includes(type)) {
         throw new Error('Choose a valid shirt type.')
       }
@@ -59,46 +91,41 @@ export const useShirtsStore = defineStore('shirts', {
         throw new Error('You can create up to two shirts.')
       }
 
-      const now = new Date().toISOString()
-      const shirt: Shirt = {
-        id: createId('shirt'),
-        type,
-        slug: createId('shirt').replace(/-/g, ''),
-        modelVersion: MODEL_VERSION,
-        status: 'draft',
-        createdAt: now,
-        updatedAt: now,
-        publishedAt: null,
-      }
-
+      const shirt = mapShirt(
+        await apiRequest<ApiShirt>('/shirts', {
+          method: 'POST',
+          body: JSON.stringify({
+            shirtType: type === 'short-sleeve' ? 'SHORT_SLEEVE' : 'LONG_SLEEVE',
+          }),
+        }),
+      )
       this.shirts.push(shirt)
-      this.persist()
       return shirt
     },
-    saveDraft(shirtId: string) {
+    async saveDraft(shirtId: string) {
       const shirt = this.getById(shirtId)
       if (!shirt) return false
 
-      shirt.updatedAt = new Date().toISOString()
-      this.persist()
+      await this.load(true)
       return true
     },
-    publish(shirtId: string) {
+    async publish(shirtId: string) {
       const shirt = this.getById(shirtId)
       if (!shirt) return false
 
-      const now = new Date().toISOString()
-      shirt.status = 'published'
-      shirt.updatedAt = now
-      shirt.publishedAt = now
-      this.persist()
+      const updated = mapShirt(
+        await apiRequest<ApiShirt>(`/shirts/${encodeURIComponent(shirtId)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'ACTIVE' }),
+        }),
+      )
+      this.shirts = this.shirts.map((item) => (item.id === shirtId ? updated : item))
       return true
     },
     reset() {
       this.shirts = []
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.removeItem(STORAGE_KEY)
-      }
+      this.loaded = false
+      this.error = ''
     },
   },
 })

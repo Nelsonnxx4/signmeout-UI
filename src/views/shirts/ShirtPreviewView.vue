@@ -31,9 +31,15 @@ const publicUrl = computed(() => {
   return `${origin}/s/${shirt.value.slug}`
 })
 
-function publishShirt() {
-  if (!shirt.value || !shirts.publish(shirt.value.id)) return
-  statusMessage.value = 'Shirt published in this frontend prototype.'
+async function publishShirt() {
+  if (!shirt.value) return
+  try {
+    if (await shirts.publish(shirt.value.id)) {
+      statusMessage.value = 'Your shirt is now published.'
+    }
+  } catch (error) {
+    statusMessage.value = error instanceof Error ? error.message : 'Could not publish the shirt.'
+  }
 }
 
 async function copyLink() {

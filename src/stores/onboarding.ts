@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 
+import { apiRequest } from '@/lib/api'
+
 export const COMMISSION_POLICY_VERSION = '2026-11-08-15pct-v1'
 
 const STORAGE_KEY = 'signmeout:onboarding-draft'
@@ -21,6 +23,7 @@ interface OnboardingState {
   commissionAccepted: boolean
   commissionAcceptedAt: string | null
   commissionPolicyVersion: string | null
+  statusSynced: boolean
 }
 
 type StoredDraft = Omit<
@@ -30,7 +33,27 @@ type StoredDraft = Omit<
   | 'admissionNumber'
   | 'nickname'
   | 'studentDetailsComplete'
+  | 'statusSynced'
 >
+
+interface OnboardingApiStatus {
+  completed: boolean
+  profile: {
+    school: { id: string; name: string }
+    department: { id: string; name: string }
+  } | null
+  studentVerification: {
+    status: string
+    fullName: string | null
+    admissionNumber: string | null
+    nickname: string | null
+  } | null
+  bank: { bankName: string; accountName: string; accountNumber: string } | null
+  commission: {
+    policy: { version: string }
+    acceptedAt: string | null
+  }
+}
 
 const emptyState: OnboardingState = {
   school: '',
@@ -49,6 +72,7 @@ const emptyState: OnboardingState = {
   commissionAccepted: false,
   commissionAcceptedAt: null,
   commissionPolicyVersion: null,
+  statusSynced: false,
 }
 
 function readStoredDraft(): Partial<StoredDraft> {
@@ -98,6 +122,26 @@ export const useOnboardingStore = defineStore('onboarding', {
       state.commissionAccepted,
   },
   actions: {
+    async syncFromApi(force = false) {
+      if (this.statusSynced && !force) return
+
+      const status = await apiRequest<OnboardingApiStatus>('/onboarding/status')
+      this.school = status.profile?.school.name ?? ''
+      this.department = status.profile?.department.name ?? ''
+      this.schoolComplete = Boolean(status.profile)
+      this.studentFullName = status.studentVerification?.fullName ?? ''
+      this.admissionNumber = status.studentVerification?.admissionNumber ?? ''
+      this.nickname = status.studentVerification?.nickname ?? ''
+      this.studentDetailsComplete = status.studentVerification?.status === 'APPROVED'
+      this.bankName = status.bank?.bankName ?? ''
+      this.accountName = status.bank?.accountName ?? ''
+      this.accountLast4 = status.bank?.accountNumber.slice(-4) ?? ''
+      this.bankComplete = Boolean(status.bank)
+      this.commissionAccepted = Boolean(status.commission.acceptedAt)
+      this.commissionAcceptedAt = status.commission.acceptedAt
+      this.commissionPolicyVersion = status.commission.policy.version
+      this.statusSynced = true
+    },
     persistDraft() {
       if (typeof window === 'undefined') return
 
@@ -128,6 +172,7 @@ export const useOnboardingStore = defineStore('onboarding', {
       this.admissionNumber = payload.admissionNumber
       this.nickname = payload.nickname ?? ''
       this.studentDetailsComplete = true
+      this.statusSynced = true
     },
     saveBank(payload: {
       bankCode: string
@@ -145,12 +190,14 @@ export const useOnboardingStore = defineStore('onboarding', {
       }
 
       this.bankComplete = true
+      this.statusSynced = true
       this.persistDraft()
     },
     acceptCommission() {
       this.commissionAccepted = true
       this.commissionAcceptedAt = new Date().toISOString()
       this.commissionPolicyVersion = COMMISSION_POLICY_VERSION
+      this.statusSynced = true
       this.persistDraft()
     },
     reset() {

@@ -43,3 +43,7 @@ playwright-report/
 
 # Local design review output
 .taste-skill/
+
+
+# envs
+.env

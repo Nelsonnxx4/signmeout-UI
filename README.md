@@ -29,6 +29,16 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 npm install
 ```
 
+Copy [.env.example](./.env.example) to `.env` and set `VITE_API_URL` to the backend origin
+(default: `http://localhost:5000`). The backend `FRONTEND_URL` must match the frontend origin so
+Better Auth can set its session cookie and accept cross-origin requests.
+
+Authentication uses backend Better Auth email one-time codes and Google OAuth. Owner onboarding,
+shirt management, public shirt data, Paystack checkout/status, wallet ledger, withdrawals, and
+dashboard data are loaded from `/api/v1`. Google OAuth also requires provider credentials on the
+backend. Public signing placement is deliberately not guessed by the frontend; the backend must
+provide an approved model placement configuration before signing can complete.
+
 ### Compile and Hot-Reload for Development
 
 ```sh

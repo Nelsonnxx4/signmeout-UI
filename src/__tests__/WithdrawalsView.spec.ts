@@ -46,8 +46,9 @@ describe('WithdrawalsView', () => {
     await flushPromises()
 
     expect(fetchMock.mock.calls[2]?.[0]).toMatch(/\/api\/v1\/withdrawals$/)
-    expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toMatchObject({
       amountKobo: 1_000_000,
+      idempotencyKey: expect.any(String),
     })
     expect(wrapper.get('[role="status"]').text()).toBe(
       'Your payout will be initiated within 10 minutes. Your bank may take longer to credit it.',

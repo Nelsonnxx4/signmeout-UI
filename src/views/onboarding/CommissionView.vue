@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ArrowLeft, ArrowRight } from '@lucide/vue'
 import { useField, useForm } from 'vee-validate'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { UiButton } from '@/components/ui/button'
-import { useOnboardingStore } from '@/stores/onboarding'
+import { apiRequest } from '@/lib/api'
+import { COMMISSION_POLICY_VERSION, useOnboardingStore } from '@/stores/onboarding'
 
 const router = useRouter()
 const onboarding = useOnboardingStore()
@@ -20,9 +22,19 @@ const { value: accepted, errorMessage: acceptedError } = useField<boolean>(
   (value) => value === true || 'Accept the 15% commission to finish setting up your account.',
 )
 
+const requestError = ref('')
 const submit = handleSubmit(async () => {
-  onboarding.acceptCommission()
-  await router.push('/dashboard')
+  requestError.value = ''
+  try {
+    await apiRequest('/onboarding/commission', {
+      method: 'POST',
+      body: JSON.stringify({ accepted: true, policyVersion: COMMISSION_POLICY_VERSION }),
+    })
+    onboarding.acceptCommission()
+    await router.push('/dashboard')
+  } catch (error) {
+    requestError.value = error instanceof Error ? error.message : 'Could not save your acceptance.'
+  }
 })
 </script>
 
@@ -65,6 +77,9 @@ const submit = handleSubmit(async () => {
     </section>
 
     <form class="mt-6" novalidate @submit="submit">
+      <p v-if="requestError" role="alert" class="mb-4 text-sm font-medium text-[var(--negative)]">
+        {{ requestError }}
+      </p>
       <label
         for="commission-accepted"
         class="flex cursor-pointer items-start gap-3 rounded-[var(--radius-small)] border border-[var(--control)] bg-[var(--surface)] p-4"

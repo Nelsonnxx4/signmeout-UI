@@ -19,6 +19,7 @@
     "@lucide/vue": "^1.70.0",
     "@tresjs/cientos": "^5.10.1",
     "@tresjs/core": "^5.10.1",
+    "better-auth": "^1.7.19",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "konva": "^10.9.1",

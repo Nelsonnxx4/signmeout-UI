@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Eye, PencilLine, Plus } from '@lucide/vue'
+import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import ShirtPreview from '@/components/shirts/ShirtPreview.vue'
@@ -9,10 +10,20 @@ import { useShirtsStore } from '@/stores/shirts'
 import { SHIRT_TYPES, SHIRT_TYPE_DEFINITIONS } from '@/types/shirt'
 
 const shirts = useShirtsStore()
+
+onMounted(() => {
+  void shirts.load()
+})
 </script>
 
 <template>
   <section>
+    <p v-if="shirts.loading" role="status" class="mb-4 text-sm text-[var(--muted)]">
+      Loading your shirts…
+    </p>
+    <p v-if="shirts.error" role="alert" class="mb-4 text-sm font-medium text-[var(--negative)]">
+      {{ shirts.error }}
+    </p>
     <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold tracking-[-0.025em] text-[var(--text)]">Shirts</h1>

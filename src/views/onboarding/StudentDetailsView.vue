@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ArrowLeft, ArrowRight, BadgeCheck, FileText, UserRound } from '@lucide/vue'
 import { useField, useForm } from 'vee-validate'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { z } from 'zod'
 
 import { UiButton } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form'
 import { UiInput } from '@/components/ui/input'
+import { apiRequest } from '@/lib/api'
 import { toFieldValidator } from '@/lib/validation'
 import { useOnboardingStore } from '@/stores/onboarding'
 
@@ -28,11 +30,7 @@ const {
 } = useField<string>(
   'studentFullName',
   toFieldValidator(
-    z
-      .string()
-      .trim()
-      .min(2, 'Enter your full name.')
-      .max(180, 'Full name is too long.'),
+    z.string().trim().min(2, 'Enter your full name.').max(180, 'Full name is too long.'),
   ),
 )
 
@@ -63,14 +61,25 @@ const {
   )(value)
 })
 
+const requestError = ref('')
 const submit = handleSubmit(async () => {
-  onboarding.saveStudentDetails({
+  requestError.value = ''
+  const details = {
     fullName: studentFullName.value.trim(),
     admissionNumber: admissionNumber.value.trim(),
-    nickname: nickname.value.trim(),
-  })
-
-  await router.push('/onboarding/bank')
+    ...(nickname.value.trim() ? { nickname: nickname.value.trim() } : {}),
+  }
+  try {
+    await apiRequest('/onboarding/student-verification', {
+      method: 'POST',
+      body: JSON.stringify(details),
+    })
+    onboarding.saveStudentDetails(details)
+    await router.push('/onboarding/bank')
+  } catch (error) {
+    requestError.value =
+      error instanceof Error ? error.message : 'Could not save your student details.'
+  }
 })
 </script>
 
@@ -81,11 +90,14 @@ const submit = handleSubmit(async () => {
       Student details
     </h1>
     <p class="mt-3 max-w-xl text-base leading-7 text-[var(--muted)]">
-      Add your student identity details so your account can be matched to your course record. You can
-      skip the nickname if you prefer not to use one.
+      Add your student information to complete your profile. These details are self-reported and are
+      not independently verified yet. You can skip the nickname if you prefer not to use one.
     </p>
 
     <form class="mt-8 grid gap-6" novalidate @submit="submit">
+      <p v-if="requestError" role="alert" class="text-sm font-medium text-[var(--negative)]">
+        {{ requestError }}
+      </p>
       <FormField
         v-slot="{ messageId }"
         for="student-full-name"

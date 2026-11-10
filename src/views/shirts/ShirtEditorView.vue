@@ -24,9 +24,16 @@ const definition = computed(() =>
 const activeView = ref<ShirtView>('front')
 const savedMessage = ref('')
 
-function saveDraft() {
-  if (!shirt.value || !shirts.saveDraft(shirt.value.id)) return
-  savedMessage.value = 'Draft saved in this browser.'
+async function saveDraft() {
+  if (!shirt.value) return
+  try {
+    if (await shirts.saveDraft(shirt.value.id)) {
+      savedMessage.value = 'Draft is saved to your account.'
+    }
+  } catch (error) {
+    savedMessage.value =
+      error instanceof Error ? error.message : 'Could not refresh the saved draft.'
+  }
 }
 </script>
 

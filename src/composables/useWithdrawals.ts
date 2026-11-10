@@ -170,7 +170,10 @@ export function useWithdrawals() {
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ amountKobo: amountKobo.value }),
+        body: JSON.stringify({
+          amountKobo: amountKobo.value,
+          idempotencyKey: globalThis.crypto?.randomUUID?.() ?? `withdrawal-${Date.now()}`,
+        }),
       })
 
       if (!response.ok) throw new Error(await responseError(response))

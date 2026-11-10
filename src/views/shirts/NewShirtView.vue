@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, ArrowRight } from '@lucide/vue'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import ShirtPreview from '@/components/shirts/ShirtPreview.vue'
@@ -18,6 +18,10 @@ const route = useRoute()
 const router = useRouter()
 const onboarding = useOnboardingStore()
 const shirts = useShirtsStore()
+
+onMounted(() => {
+  void shirts.load()
+})
 
 const requestedType = Array.isArray(route.query.type) ? route.query.type[0] : route.query.type
 const validRequestedType = SHIRT_TYPES.includes(requestedType as ShirtType)
@@ -42,7 +46,7 @@ async function createShirt() {
   }
 
   try {
-    const shirt = shirts.createDraft(selectedType.value)
+    const shirt = await shirts.createDraft(selectedType.value)
     error.value = ''
     await router.push(`/shirts/${shirt.id}/edit`)
   } catch (caughtError) {
@@ -148,7 +152,13 @@ async function createShirt() {
         <RouterLink to="/shirts" :class="buttonVariants({ variant: 'secondary', size: 'lg' })">
           Cancel
         </RouterLink>
-        <UiButton type="submit" variant="primary" size="lg" class="justify-between">
+        <UiButton
+          type="submit"
+          variant="primary"
+          size="lg"
+          :disabled="shirts.loading || !shirts.loaded"
+          class="justify-between"
+        >
           Create draft
           <ArrowRight aria-hidden="true" />
         </UiButton>
