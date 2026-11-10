@@ -22,17 +22,24 @@ const steps = computed(() => [
   },
   {
     number: 2,
-    label: 'Bank account',
-    to: '/onboarding/bank',
-    complete: onboarding.bankComplete,
+    label: 'Student details',
+    to: '/onboarding/student',
+    complete: onboarding.studentDetailsComplete,
     available: onboarding.schoolComplete,
   },
   {
     number: 3,
+    label: 'Bank account',
+    to: '/onboarding/bank',
+    complete: onboarding.bankComplete,
+    available: onboarding.studentDetailsComplete,
+  },
+  {
+    number: 4,
     label: 'Commission',
     to: '/onboarding/commission',
     complete: onboarding.commissionAccepted,
-    available: onboarding.schoolComplete && onboarding.bankComplete,
+    available: onboarding.studentDetailsComplete && onboarding.bankComplete,
   },
 ])
 </script>
@@ -53,7 +60,7 @@ const steps = computed(() => [
 
     <main class="mx-auto w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
       <nav aria-label="Onboarding progress">
-        <ol class="grid grid-cols-3 gap-2 sm:gap-4">
+        <ol class="grid grid-cols-4 gap-2 sm:gap-4">
           <li v-for="step in steps" :key="step.label" class="min-w-0">
             <div
               class="h-1 rounded-full"

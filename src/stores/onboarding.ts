@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-export const COMMISSION_POLICY_VERSION = 'mvp-1.0'
+export const COMMISSION_POLICY_VERSION = '2026-11-08-15pct-v1'
 
 const STORAGE_KEY = 'signmeout:onboarding-draft'
 
@@ -8,6 +8,10 @@ interface OnboardingState {
   school: string
   department: string
   schoolComplete: boolean
+  studentFullName: string
+  admissionNumber: string
+  nickname: string
+  studentDetailsComplete: boolean
   bankCode: string
   bankName: string
   accountNumber: string
@@ -19,12 +23,23 @@ interface OnboardingState {
   commissionPolicyVersion: string | null
 }
 
-type StoredDraft = Omit<OnboardingState, 'accountNumber'>
+type StoredDraft = Omit<
+  OnboardingState,
+  | 'accountNumber'
+  | 'studentFullName'
+  | 'admissionNumber'
+  | 'nickname'
+  | 'studentDetailsComplete'
+>
 
 const emptyState: OnboardingState = {
   school: '',
   department: '',
   schoolComplete: false,
+  studentFullName: '',
+  admissionNumber: '',
+  nickname: '',
+  studentDetailsComplete: false,
   bankCode: '',
   bankName: '',
   accountNumber: '',
@@ -44,7 +59,19 @@ function readStoredDraft(): Partial<StoredDraft> {
     if (!stored) return {}
 
     const parsed: unknown = JSON.parse(stored)
-    return parsed && typeof parsed === 'object' ? (parsed as Partial<StoredDraft>) : {}
+    if (!parsed || typeof parsed !== 'object') return {}
+
+    const draft = parsed as Partial<StoredDraft>
+    if (draft.commissionPolicyVersion !== COMMISSION_POLICY_VERSION) {
+      return {
+        ...draft,
+        commissionAccepted: false,
+        commissionAcceptedAt: null,
+        commissionPolicyVersion: null,
+      }
+    }
+
+    return draft
   } catch {
     return {}
   }
@@ -59,11 +86,16 @@ export const useOnboardingStore = defineStore('onboarding', {
   getters: {
     nextRoute(state) {
       if (!state.schoolComplete) return '/onboarding/school'
+      if (!state.studentDetailsComplete) return '/onboarding/student'
       if (!state.bankComplete) return '/onboarding/bank'
       if (!state.commissionAccepted) return '/onboarding/commission'
       return '/dashboard'
     },
-    isComplete: (state) => state.schoolComplete && state.bankComplete && state.commissionAccepted,
+    isComplete: (state) =>
+      state.schoolComplete &&
+      state.studentDetailsComplete &&
+      state.bankComplete &&
+      state.commissionAccepted,
   },
   actions: {
     persistDraft() {
@@ -90,6 +122,12 @@ export const useOnboardingStore = defineStore('onboarding', {
       this.department = payload.department
       this.schoolComplete = true
       this.persistDraft()
+    },
+    saveStudentDetails(payload: { fullName: string; admissionNumber: string; nickname?: string }) {
+      this.studentFullName = payload.fullName
+      this.admissionNumber = payload.admissionNumber
+      this.nickname = payload.nickname ?? ''
+      this.studentDetailsComplete = true
     },
     saveBank(payload: {
       bankCode: string

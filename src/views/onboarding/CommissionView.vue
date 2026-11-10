@@ -17,7 +17,7 @@ const { handleSubmit, isSubmitting } = useForm({
 
 const { value: accepted, errorMessage: acceptedError } = useField<boolean>(
   'accepted',
-  (value) => value === true || 'Accept the 10% commission to finish setting up your account.',
+  (value) => value === true || 'Accept the 15% commission to finish setting up your account.',
 )
 
 const submit = handleSubmit(async () => {
@@ -28,12 +28,12 @@ const submit = handleSubmit(async () => {
 
 <template>
   <div>
-    <p class="text-sm font-semibold text-[var(--hero-text)]">Step 3 of 3</p>
+    <p class="text-sm font-semibold text-[var(--hero-text)]">Step 4 of 4</p>
     <h1 class="mt-3 text-2xl font-semibold tracking-[-0.025em] text-[var(--text)]">
       Platform commission
     </h1>
     <p class="mt-3 max-w-xl text-base leading-7 text-[var(--muted)]">
-      SignMeOut keeps 10% of every successful payment. This applies to the gift and any signature
+      SignMeOut keeps 15% of every successful payment. This applies to the gift and any signature
       enlargement fee included in the payment.
     </p>
 
@@ -50,17 +50,17 @@ const submit = handleSubmit(async () => {
           <dd class="shrink-0 font-semibold tabular-nums text-[var(--text)]">₦6,000</dd>
         </div>
         <div class="flex items-center justify-between gap-4">
-          <dt class="text-[var(--muted)]">SignMeOut commission (10%)</dt>
-          <dd class="shrink-0 font-semibold tabular-nums text-[var(--text)]">−₦600</dd>
+          <dt class="text-[var(--muted)]">SignMeOut commission (15%)</dt>
+          <dd class="shrink-0 font-semibold tabular-nums text-[var(--text)]">−₦900</dd>
         </div>
         <div class="flex items-center justify-between gap-4 pt-1">
           <dt class="font-semibold text-[var(--text)]">Your share</dt>
-          <dd class="shrink-0 text-lg font-semibold tabular-nums text-[var(--text)]">₦5,400</dd>
+          <dd class="shrink-0 text-lg font-semibold tabular-nums text-[var(--text)]">₦5,100</dd>
         </div>
       </dl>
       <p class="mt-4 text-sm leading-6 text-[var(--muted)]">
-        Your share is shown before gateway fees and taxes. Those deductions must be defined and
-        disclosed before production payments begin.
+        SignMeOut covers payment-processing and transfer fees from its commission. Any applicable
+        taxes will be disclosed before production payments begin.
       </p>
     </section>
 
@@ -80,7 +80,7 @@ const submit = handleSubmit(async () => {
         />
         <span>
           <span class="block font-semibold text-[var(--text)]">
-            I accept the 10% platform commission.
+            I accept the 15% platform commission.
           </span>
           <span id="commission-help" class="mt-1 block text-sm leading-6 text-[var(--muted)]">
             My acceptance can be stored with the policy version and acceptance time.

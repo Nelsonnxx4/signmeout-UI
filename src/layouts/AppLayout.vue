@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboard, Shirt as ShirtIcon } from '@lucide/vue'
+import { LayoutDashboard, Shirt as ShirtIcon, Wallet } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 
@@ -12,6 +12,7 @@ const onboarding = useOnboardingStore()
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/shirts', label: 'Shirts', icon: ShirtIcon },
+  { to: '/withdrawals', label: 'Withdraw', icon: Wallet },
 ]
 
 const currentTitle = computed(() =>
@@ -82,7 +83,7 @@ const currentTitle = computed(() =>
     </main>
 
     <nav
-      class="fixed inset-x-0 bottom-0 z-20 grid grid-cols-2 border-t border-[var(--border)] bg-[var(--sidebar)] px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:hidden"
+      class="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-[var(--border)] bg-[var(--sidebar)] px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:hidden"
       aria-label="Owner mobile navigation"
     >
       <RouterLink

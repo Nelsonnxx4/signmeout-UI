@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, Eye, PencilLine, Plus } from '@lucide/vue'
+import { ArrowRight, Eye, PencilLine, Plus, Wallet } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
 
 import ShirtPreview from '@/components/shirts/ShirtPreview.vue'
@@ -35,6 +35,14 @@ const shirts = useShirtsStore()
       >
         <Plus aria-hidden="true" />
         Create shirt
+      </RouterLink>
+      <RouterLink
+        to="/withdrawals"
+        :class="buttonVariants({ variant: 'secondary', size: 'md' })"
+        class="shrink-0"
+      >
+        <Wallet aria-hidden="true" />
+        Withdraw earnings
       </RouterLink>
     </header>
 
@@ -165,7 +173,7 @@ const shirts = useShirtsStore()
           </div>
           <div>
             <dt class="text-[var(--muted)]">Platform commission</dt>
-            <dd class="mt-1 font-semibold tabular-nums text-[var(--text)]">10%</dd>
+            <dd class="mt-1 font-semibold tabular-nums text-[var(--text)]">15%</dd>
           </div>
         </dl>
         <RouterLink

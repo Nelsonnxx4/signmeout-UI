@@ -48,16 +48,22 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: 'School and department', onboardingStep: 1 },
       },
       {
+        path: 'student',
+        name: 'onboarding-student',
+        component: () => import('@/views/onboarding/StudentDetailsView.vue'),
+        meta: { title: 'Student details', onboardingStep: 2 },
+      },
+      {
         path: 'bank',
         name: 'onboarding-bank',
         component: () => import('@/views/onboarding/BankDetailsView.vue'),
-        meta: { title: 'Bank account', onboardingStep: 2 },
+        meta: { title: 'Bank account', onboardingStep: 3 },
       },
       {
         path: 'commission',
         name: 'onboarding-commission',
         component: () => import('@/views/onboarding/CommissionView.vue'),
-        meta: { title: 'Platform commission', onboardingStep: 3 },
+        meta: { title: 'Platform commission', onboardingStep: 4 },
       },
     ],
   },
@@ -79,6 +85,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: 'Shirts' },
       },
       {
+        path: 'withdrawals',
+        name: 'withdrawals',
+        component: () => import('@/views/withdrawals/WithdrawalsView.vue'),
+        meta: { title: 'Withdraw earnings' },
+      },
+      {
         path: 'shirts/new',
         name: 'shirt-new',
         component: () => import('@/views/shirts/NewShirtView.vue'),
@@ -97,6 +109,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: 'Shirt preview', requiresShirt: true },
       },
     ],
+  },
+  {
+    path: '/admin/withdrawals',
+    name: 'admin-withdrawals',
+    component: () => import('@/views/admin/AdminWithdrawalsView.vue'),
+    meta: { title: 'Withdrawal requests' },
   },
   {
     path: '/s/:slug',
@@ -128,7 +146,11 @@ router.beforeEach((to) => {
     return { name: 'onboarding-school' }
   }
 
-  if (onboardingStep && onboardingStep >= 3 && !onboarding.bankComplete) {
+  if (onboardingStep && onboardingStep >= 3 && !onboarding.studentDetailsComplete) {
+    return { name: 'onboarding-student' }
+  }
+
+  if (onboardingStep && onboardingStep >= 4 && !onboarding.bankComplete) {
     return { name: 'onboarding-bank' }
   }
 

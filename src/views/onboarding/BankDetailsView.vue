@@ -86,7 +86,7 @@ const submit = handleSubmit(async () => {
 
 <template>
   <div>
-    <p class="text-sm font-semibold text-[var(--hero-text)]">Step 2 of 3</p>
+    <p class="text-sm font-semibold text-[var(--hero-text)]">Step 3 of 4</p>
     <h1 class="mt-3 text-2xl font-semibold tracking-[-0.025em] text-[var(--text)]">Bank account</h1>
     <p class="mt-3 max-w-xl text-base leading-7 text-[var(--muted)]">
       Add the naira account where your cleared shirt earnings should be paid. The account name will
@@ -160,7 +160,7 @@ const submit = handleSubmit(async () => {
       </FormField>
 
       <div class="mt-1 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
-        <UiButton size="lg" @click="router.push('/onboarding/school')">
+        <UiButton size="lg" @click="router.push('/onboarding/student')">
           <ArrowLeft aria-hidden="true" />
           Back
         </UiButton>

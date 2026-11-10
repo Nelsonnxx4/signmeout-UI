@@ -1,12 +1,12 @@
 # Digital Signing Out Platform
 
-Product Requirements Document (PRD)  |  MVP v1.0  |  5 November 2026
+Product Requirements Document (PRD) | MVP v1.0 | 5 November 2026
 
 Status: Working specification. Confirmed business rules are distinguished from proposed implementation details.
 
 ## 1. Executive summary
 
-A web platform for students to create a free virtual signing-out shirt and share a public link. Friends and classmates gift the shirt owner at least ₦2,000 to unlock signing. Paid signatures appear on an interactive, rotatable 3D shirt. The platform retains 10% of successful payments. Shirt owners can request withdrawal after verification of their student status.
+A web platform for students to create a free virtual signing-out shirt and share a public link. Friends and classmates gift the shirt owner at least ₦2,000 to unlock signing. Paid signatures appear on an interactive, rotatable 3D shirt. The platform retains 15% of successful payments. Shirt owners can request withdrawals to their validated bank account; each request enters a 10-minute processing period before payout proceeds.
 
 ## 2. Goals and success criteria
 
@@ -18,7 +18,7 @@ A web platform for students to create a free virtual signing-out shirt and share
 
 - Maintain accurate, auditable transaction and withdrawal records.
 
-- Provide a secure, reviewable student-verification process before withdrawal.
+- Process withdrawal requests consistently, with a 10-minute processing period before payout.
 
 Proposed launch KPIs: onboarding completion, shared links, checkout conversion, completed signatures, payment failure rate, withdrawal completion time, rendering performance and support incidents. Targets to be defined after beta testing.
 
@@ -26,9 +26,9 @@ Proposed launch KPIs: onboarding completion, shared links, checkout conversion, 
 
 | Role | Capabilities |
 | --- | --- |
-| Shirt owner | Register, onboard, create/view up to two shirts, share links, view gifts and signatures, verify student status, request withdrawals. |
+| Shirt owner | Register, onboard, create/view up to two shirts, share links, view gifts and signatures, request withdrawals. |
 | Contributor | Open public shirt link, choose gift and eligible signature size, pay, sign once per verified purchase. No account required. |
-| Administrator | Manage school records, verification reviews, fraud flags, payment reconciliation, payout approvals and platform configuration. |
+| Administrator | Manage school records, fraud flags, payment reconciliation, withdrawal requests and platform configuration. |
 
 ## 4. Confirmed business rules
 
@@ -37,15 +37,15 @@ Proposed launch KPIs: onboarding completion, shared links, checkout conversion, 
 | Account | Only shirt owners create accounts; contributors do not. |
 | Shirt limit | At most two shirts per owner: one short-sleeve and one long-sleeve. |
 | Onboarding | After signup: school and department → bank account → dashboard. |
-| Commission | 10% of each successful payment, transparently disclosed during onboarding; owner must acknowledge before continuing. |
+| Commission | 15% of each successful payment, transparently disclosed during onboarding; owner must acknowledge before continuing. The platform covers payment-processing and transfer fees from its commission. |
 | Minimum gift | ₦2,000; normal 1× signature included. |
 | Enlargement eligibility | Only a gift amount of at least ₦5,000 (excluding size surcharge) unlocks larger signatures. |
 | Size fees | 2×: +₦500; 3×: +₦700; 4×: +₦1,000. 1×: no extra charge. |
 | Payment sequence | Contributor pays before receiving signing permission. |
 | 3D shirt | Owner can rotate/spin shirt and see newly saved signatures. |
-| Withdrawals | Owner must verify student status at declared school using student ID or accepted identity evidence before withdrawing. |
+| Withdrawals | Student verification is not required. Owners with sufficient cleared balance and a validated bank account may request a withdrawal. The request remains in processing for 10 minutes, then payout proceeds automatically. |
 
-Commission calculation assumption for MVP: 10% applies to the full successful payment (gift plus enlargement fee). Gateway fees and tax treatment must be defined and disclosed before production; example earnings exclude these charges.
+Commission calculation assumption for MVP: 15% applies to the full successful payment (gift plus enlargement fee). The platform covers payment-processing and transfer fees from its commission; tax treatment must be defined and disclosed before production.
 
 ## 5. User journeys
 
@@ -57,7 +57,7 @@ Commission calculation assumption for MVP: 10% applies to the full successful pa
 
 - Provide bank account details; validate recipient/account name through payment provider where available.
 
-- Display prominent 10% commission disclosure and require explicit acceptance, storing policy version and timestamp.
+- Display prominent 15% commission disclosure and require explicit acceptance, storing policy version and timestamp.
 
 - Land on dashboard with an interactive 3D shirt, link sharing controls and earnings overview.
 
@@ -75,17 +75,21 @@ Commission calculation assumption for MVP: 10% applies to the full successful pa
 
 - Server validates entitlement, bounds and collision rules; persists signature and updates the shirt.
 
-### 5.3 Withdrawal and verification
+### 5.3 Withdrawals
 
 - Owner views available, pending and withdrawn funds, plus itemized deductions.
 
-- On first withdrawal, request student verification with student ID or another accepted document.
+- Owner enters an amount up to the available balance and confirms the destination bank account.
 
-- Store evidence privately; administrator reviews and approves/rejects with reason and appeal/resubmission path.
+- Create an auditable withdrawal request and reserve the requested funds immediately.
 
-- Only verified owners with sufficient cleared balance can request payouts to validated bank accounts.
+- Set the request to processing and hold payout initiation for 10 minutes after the request is created.
 
-- Backend creates idempotent payout request; reconcile final provider status before marking paid.
+- After the request is accepted, show the owner: “Your payout will be initiated within 10 minutes. Your bank may take longer to credit it.”
+
+- After 10 minutes, initiate the payout automatically, then reconcile the provider's final status before marking it paid.
+
+- Do not require student verification or admin approval to start the 10-minute processing period.
 
 ## 6. Functional requirements
 
@@ -95,7 +99,7 @@ Commission calculation assumption for MVP: 10% applies to the full successful pa
 
 - School and department fields are required; support curated directory plus moderated “other” entries.
 
-- Owners can correct school/department subject to verification safeguards.
+- Owners can correct school/department details.
 
 - Protect owner-only routes; contributor flow remains public.
 
@@ -130,7 +134,7 @@ Commission calculation assumption for MVP: 10% applies to the full successful pa
 | ₦2,000–₦4,999 | 1× only | ₦0 |
 | ₦5,000+ | 1× / 2× / 3× / 4× | ₦0 / ₦500 / ₦700 / ₦1,000 |
 
-Example: ₦5,000 gift + 4× enlargement (₦1,000) = ₦6,000 payment; platform fee ₦600; owner share ₦5,400 before gateway fees/taxes. Signature size is a relative design scale, not necessarily 2×/3×/4× surface area; final dimensions and available space need design validation.
+Example: ₦5,000 gift + 4× enlargement (₦1,000) = ₦6,000 payment; platform fee ₦900; owner share ₦5,100. The platform covers payment-processing and transfer fees from its commission; tax treatment must be defined before production. Signature size is a relative design scale, not necessarily 2×/3×/4× surface area; final dimensions and available space need design validation.
 
 - Amounts and eligibility calculated and verified on backend, in integer kobo.
 
@@ -150,25 +154,23 @@ Example: ₦5,000 gift + 4× enlargement (₦1,000) = ₦6,000 payment; platform
 
 - Immutable transaction ledger and reconciliation; never derive payouts from unverified frontend state.
 
-- Display verification status, payout status and failure reasons.
+- Display withdrawal status, processing time and failure reasons.
 
 ### 6.5 Admin
 
-- Review student verification documents with restricted access and audit logs.
-
-- Manage fraud flags, disputed payments, failed payouts and support cases.
+- Manage withdrawal requests, fraud flags, disputed payments, failed payouts and support cases.
 
 - Configure supported schools, signature size dimensions and other non-contractual settings.
 
-- View operational metrics without exposing private student documents broadly.
+- View operational metrics.
 
 ## 7. UX and screens
 
 | Audience | Screens |
 | --- | --- |
-| Owner | Landing, signup/login, onboarding: school/department, onboarding: bank + commission acknowledgement, dashboard, shirt detail, gifts/history, verification, withdrawals, settings. |
+| Owner | Landing, signup/login, onboarding: school/department, onboarding: bank + commission acknowledgement, dashboard, shirt detail, gifts/history, withdrawals, settings. |
 | Contributor | Public shirt, gift/size selection, payment checkout, payment return/resume, signature editor, signing confirmation. |
-| Admin | Admin login, verification queue/detail, payments, withdrawals, disputes and audit log. |
+| Admin | Admin login, withdrawal request queue, payments, disputes and audit log. |
 
 Design direction: mobile-first, celebratory but uncluttered; accessible forms, transparent totals, loading/error/empty states, and 3D performance fallback for lower-end devices.
 
@@ -187,7 +189,7 @@ Design direction: mobile-first, celebratory but uncluttered; accessible forms, t
 | Background work | Start simple; add Redis + BullMQ for retries/reconciliation when needed |
 | Deployment | Frontend and backend deployed separately; managed PostgreSQL and HTTPS |
 
-Suggested structure: separate frontend and backend repositories; backend modular monolith with auth, onboarding, schools, shirts, signatures, payments, ledger, verification, withdrawals and admin modules.
+Suggested structure: separate frontend and backend repositories; backend modular monolith with auth, onboarding, schools, shirts, signatures, payments, ledger, withdrawals and admin modules.
 
 ## 9. Data model (initial)
 
@@ -201,7 +203,6 @@ Suggested structure: separate frontend and backend repositories; backend modular
 | SigningEntitlement | id, paymentId, size, tokenHash, expiresAt, usedAt |
 | Signature | id, shirtId, paymentId, assetKey, surface, x, y, scale, rotation, status |
 | LedgerEntry | id, ownerId, paymentId/withdrawalId, type, amountKobo, createdAt |
-| StudentVerification | id, ownerId, schoolId, evidenceKey, status, reviewedBy, reviewedAt |
 | Withdrawal | id, ownerId, amountKobo, bankAccountId, status, providerRef, idempotencyKey |
 
 Enforce database uniqueness for provider payment references, signing entitlement per paid transaction, and payout idempotency keys; define allowed shirt type per owner via a unique constraint.
@@ -216,9 +217,9 @@ Enforce database uniqueness for provider payment references, signing entitlement
 
 - POST /signing/entitlements/:id/signatures; GET /dashboard/summary; GET /wallet/transactions
 
-- POST /verification/student; GET /verification/status; POST /withdrawals; GET /withdrawals
+- POST /withdrawals; GET /withdrawals; GET /admin/withdrawals
 
-- GET/PATCH /admin/verifications/:id; GET /admin/payments; GET /admin/withdrawals
+- GET /admin/payments
 
 ## 11. Security, compliance and reliability
 
@@ -226,15 +227,13 @@ Enforce database uniqueness for provider payment references, signing entitlement
 
 - Use role-based authorization, rate limits, CSRF protections where relevant, secure cookies, input validation and upload scanning.
 
-- Store student IDs in private object storage with short-lived signed access, encryption, review audit trail and documented retention/deletion policy.
-
 - Apply Nigeria Data Protection Act requirements and publish clear privacy/terms and consent notices; obtain local legal review.
 
 - Confirm payment provider supports third-party collections, fee splits, custody/settlement and transfers before launch; do not assume approval.
 
 - Use ledger transactions and row-level locking or equivalent to prevent duplicate payouts and negative balances.
 
-- Define payment failure, refund, chargeback, dispute, withdrawal failure and verification rejection workflows.
+- Define payment failure, refund, chargeback, dispute and withdrawal failure workflows.
 
 - Optimize 3D model sizes, lazy-load viewer, support reduced motion and fallback 2D preview.
 
@@ -246,7 +245,7 @@ Enforce database uniqueness for provider payment references, signing entitlement
 
 - Server-side observability: structured logs, payment audit events, alerts and error monitoring.
 
-- Automated tests for pricing, eligibility, commission, payment idempotency, signature bounds and withdrawals.
+- Automated tests for pricing, eligibility, commission, payment idempotency, signature bounds, withdrawal balance reservation and the 10-minute payout delay.
 
 - Backups, restore drills and environment-separated credentials.
 
@@ -258,7 +257,7 @@ Enforce database uniqueness for provider payment references, signing entitlement
 | 2 | 3D shirt models and rotatable viewer; public link and shirt management. |
 | 3 | 2D signature editor, UV mapping, placement persistence, collision/boundary handling. |
 | 4 | Paystack checkout, webhook verification, size eligibility, signing entitlement, ledger. |
-| 5 | Dashboard, earnings and signatures; student verification and admin review. |
+| 5 | Dashboard, earnings and signatures; withdrawal requests and admin payout monitoring. |
 | 6 | Withdrawals, reconciliation, security testing, mobile optimization, beta launch. |
 
 ## 14. Out of scope for initial MVP
@@ -269,21 +268,19 @@ Enforce database uniqueness for provider payment references, signing entitlement
 
 - Complex 3D avatar customization or AI-generated signatures.
 
-- Automated school verification integrations unless an accessible official source exists.
-
 ## 15. Open decisions before implementation
 
 - Exact signature dimensions: whether 2×/3×/4× refers to width, linear scale or occupied area; maximum signable shirt surface.
 
 - Can contributors sign both front and back? Can owners move or remove signatures, and under what policy?
 
-- Who pays gateway fees, and how are fees, refunds and chargebacks apportioned?
+- How are refunds and chargebacks apportioned, and what is the tax treatment?
 
 - How are bank accounts verified, and what identity/KYC requirements does the payout provider impose?
 
-- When do funds become withdrawable, and are there payout thresholds or holds?
+- Are there minimum or maximum withdrawal amounts?
 
-- Can an owner change school after onboarding, and what verification documents are acceptable?
+- Can an owner change school after onboarding, and should changes require an audit trail?
 
 - What happens when a shirt is full or payment succeeds but signature submission fails?
 

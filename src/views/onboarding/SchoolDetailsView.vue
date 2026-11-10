@@ -74,19 +74,18 @@ const submit = handleSubmit(async () => {
     department: department.value === OTHER_OPTION ? otherDepartment.value.trim() : department.value,
   })
 
-  await router.push('/onboarding/bank')
+  await router.push('/onboarding/student')
 })
 </script>
 
 <template>
   <div>
-    <p class="text-sm font-semibold text-[var(--hero-text)]">Step 1 of 3</p>
+    <p class="text-sm font-semibold text-[var(--hero-text)]">Step 1 of 4</p>
     <h1 class="mt-3 text-2xl font-semibold tracking-[-0.025em] text-[var(--text)]">
       School and department
     </h1>
     <p class="mt-3 max-w-xl text-base leading-7 text-[var(--muted)]">
-      Tell us where you study so your shirt and future student verification use the right school
-      details.
+      Tell us where you study so we can personalize your shirt and account details.
     </p>
 
     <form class="mt-8 grid gap-6" novalidate @submit="submit">
@@ -192,7 +191,7 @@ const submit = handleSubmit(async () => {
         :loading="isSubmitting"
         class="mt-1 justify-between sm:ml-auto sm:w-auto"
       >
-        Continue to bank account
+        Continue to student details
         <ArrowRight v-if="!isSubmitting" aria-hidden="true" />
       </UiButton>
     </form>
