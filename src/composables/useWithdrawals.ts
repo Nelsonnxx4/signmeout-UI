@@ -13,8 +13,10 @@ interface Withdrawal {
   amountKobo: number
   status: WithdrawalStatus
   requestedAt: string
+  adminResponseDeadline: string | null
   processedAt: string | null
   failureReason: string | null
+  transferReference: string | null
 }
 
 const withdrawalStatuses: WithdrawalStatus[] = [
@@ -36,6 +38,7 @@ export function useWithdrawals() {
   const amountNaira = ref<number | ''>('')
   const loading = ref(false)
   const submitting = ref(false)
+  const cancellingWithdrawalId = ref<string | null>(null)
   const errorMessage = ref('')
   const successMessage = ref('')
 
@@ -47,6 +50,7 @@ export function useWithdrawals() {
       !loading.value &&
       !submitting.value &&
       summary.value?.hasValidBank === true &&
+      Number.isSafeInteger(amountKobo.value) &&
       amountKobo.value > 0 &&
       amountKobo.value <= (summary.value?.availableBalance ?? 0),
   )
@@ -81,8 +85,10 @@ export function useWithdrawals() {
       typeof value.status === 'string' &&
       withdrawalStatuses.some((status) => status === value.status) &&
       typeof value.requestedAt === 'string' &&
+      (typeof value.adminResponseDeadline === 'string' || value.adminResponseDeadline === null) &&
       (typeof value.processedAt === 'string' || value.processedAt === null) &&
-      (typeof value.failureReason === 'string' || value.failureReason === null)
+      (typeof value.failureReason === 'string' || value.failureReason === null) &&
+      (typeof value.transferReference === 'string' || value.transferReference === null)
     )
   }
 
@@ -96,17 +102,6 @@ export function useWithdrawals() {
 
   async function responseError(response: Response): Promise<string> {
     if (response.status === 401) return 'Sign in to request a withdrawal.'
-    if (response.status === 403) {
-      const payload: unknown = await response.json().catch(() => null)
-      if (
-        isRecord(payload) &&
-        isRecord(payload.error) &&
-        payload.error.code === 'VERIFICATION_REQUIRED'
-      ) {
-        return 'The withdrawal service still requires student verification. Please try again after the backend is updated.'
-      }
-      return 'You do not have permission to request a withdrawal.'
-    }
 
     const payload: unknown = await response.json().catch(() => null)
     if (isRecord(payload) && isRecord(payload.error) && typeof payload.error.message === 'string') {
@@ -196,6 +191,38 @@ export function useWithdrawals() {
     }
   }
 
+  async function cancelWithdrawal(withdrawalId: string) {
+    if (cancellingWithdrawalId.value) return
+    cancellingWithdrawalId.value = withdrawalId
+    errorMessage.value = ''
+    successMessage.value = ''
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/api/v1/withdrawals/${encodeURIComponent(withdrawalId)}/cancel`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        },
+      )
+
+      if (!response.ok) throw new Error(await responseError(response))
+
+      const data = await readData(response)
+      if (!isWithdrawal(data)) {
+        throw new Error('The server returned an invalid withdrawal response.')
+      }
+
+      successMessage.value = 'Withdrawal cancelled. The reserved funds are available again.'
+      await loadWithdrawals()
+    } catch (error) {
+      errorMessage.value =
+        error instanceof Error ? error.message : 'Could not cancel this withdrawal.'
+    } finally {
+      cancellingWithdrawalId.value = null
+    }
+  }
+
   function formatAmount(amountKobo: number) {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
@@ -222,6 +249,8 @@ export function useWithdrawals() {
     amountKobo,
     amountNaira,
     canSubmit,
+    cancellingWithdrawalId,
+    cancelWithdrawal,
     errorMessage,
     formatAmount,
     formatDate,

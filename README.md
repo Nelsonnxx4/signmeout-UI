@@ -37,7 +37,10 @@ Authentication uses backend Better Auth email one-time codes and Google OAuth. O
 shirt management, public shirt data, Paystack checkout/status, wallet ledger, withdrawals, and
 dashboard data are loaded from `/api/v1`. Google OAuth also requires provider credentials on the
 backend. Public signing placement is deliberately not guessed by the frontend; the backend must
-provide an approved model placement configuration before signing can complete.
+provide an approved model placement configuration and expose it to the public shirt contract before
+checkout can be enabled. The frontend keeps checkout disabled until that signing flow can safely
+submit a signature. Automatic withdrawal initiation also requires the backend's
+`PAYSTACK_TRANSFERS_ENABLED` setting to be enabled after provider and compliance approval.
 
 ### Compile and Hot-Reload for Development
 

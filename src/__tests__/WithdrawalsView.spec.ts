@@ -27,8 +27,10 @@ describe('WithdrawalsView', () => {
       amountKobo: 1_000_000,
       status: 'PENDING',
       requestedAt: '2026-11-09T10:00:00.000Z',
+      adminResponseDeadline: '2026-11-09T10:10:00.000Z',
       processedAt: null,
       failureReason: null,
+      transferReference: null,
     }
     const fetchMock = vi
       .fn()
@@ -56,7 +58,7 @@ describe('WithdrawalsView', () => {
     expect(wrapper.text()).toContain('PENDING')
   })
 
-  it('shows the backend verification requirement instead of a success message', async () => {
+  it('shows a backend withdrawal error without requiring student verification', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response({ success: true, data: availableSummary }))
@@ -65,12 +67,9 @@ describe('WithdrawalsView', () => {
         response(
           {
             success: false,
-            error: {
-              code: 'VERIFICATION_REQUIRED',
-              message: 'Verification must be approved before withdrawing funds.',
-            },
+            error: { code: 'BANK_REQUIRED', message: 'Add and validate a bank account first.' },
           },
-          403,
+          409,
         ),
       )
     vi.stubGlobal('fetch', fetchMock)
@@ -81,9 +80,50 @@ describe('WithdrawalsView', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.get('[role="alert"]').text()).toContain(
-      'The withdrawal service still requires student verification',
-    )
+    expect(wrapper.get('[role="alert"]').text()).toContain('Add and validate a bank account')
     expect(wrapper.find('[role="status"]').exists()).toBe(false)
+  })
+
+  it('cancels a pending withdrawal before its transfer starts', async () => {
+    const request = {
+      id: 'withdrawal-123',
+      amountKobo: 1_000_000,
+      status: 'PENDING',
+      requestedAt: '2026-11-09T10:00:00.000Z',
+      adminResponseDeadline: '2026-11-09T10:10:00.000Z',
+      processedAt: null,
+      failureReason: null,
+      transferReference: null,
+    }
+    const cancelled = {
+      ...request,
+      status: 'CANCELLED',
+      processedAt: '2026-11-09T10:03:00.000Z',
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response({ success: true, data: availableSummary }))
+      .mockResolvedValueOnce(response({ success: true, data: [request] }))
+      .mockResolvedValueOnce(response({ success: true, data: cancelled }))
+      .mockResolvedValueOnce(response({ success: true, data: availableSummary }))
+      .mockResolvedValueOnce(response({ success: true, data: [cancelled] }))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true),
+    )
+
+    const wrapper = mount(WithdrawalsView)
+    await flushPromises()
+    await wrapper.get('[aria-label="Cancel withdrawal withdrawal-123"]').trigger('click')
+    await flushPromises()
+
+    expect(fetchMock.mock.calls[2]?.[0]).toMatch(/\/withdrawals\/withdrawal-123\/cancel$/)
+    expect(fetchMock.mock.calls[2]?.[1]?.method).toBe('POST')
+    expect(wrapper.get('[role="status"]').text()).toContain(
+      'Withdrawal cancelled. The reserved funds are available again.',
+    )
+    expect(wrapper.text()).toContain('CANCELLED')
+    expect(wrapper.find('[aria-label="Cancel withdrawal withdrawal-123"]').exists()).toBe(false)
   })
 })

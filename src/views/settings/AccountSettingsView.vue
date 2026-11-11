@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 
 import { UiButton } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/auth'
@@ -35,6 +35,18 @@ async function signOut() {
         Current account:
         <span class="font-semibold text-[var(--text)]">{{ auth.user?.email || 'Loading…' }}</span>
       </p>
+      <p class="mt-2 text-sm text-[var(--muted)]">
+        Email status:
+        <span class="font-semibold text-[var(--text)]">
+          {{ auth.user?.emailVerified ? 'Verified' : 'Not verified' }}
+        </span>
+      </p>
+      <RouterLink
+        to="/settings/profile"
+        class="mt-3 inline-flex min-h-10 items-center text-sm font-semibold text-[var(--brand-strong)] hover:underline"
+      >
+        Update your display name
+      </RouterLink>
     </div>
 
     <div class="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-5">

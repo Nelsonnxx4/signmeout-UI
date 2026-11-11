@@ -20,11 +20,15 @@ interface PublicShirt {
   model: { version: number; key: string }
   status: string
   signingAvailable: boolean
+  placementConfig?: { version: number; surfaces: { id: string }[] } | null
 }
 
 interface PublicSignature {
   id: string
-  surfaceId: string
+  position: { x: number; y: number }
+  size: { width: number; height: number }
+  rotation: number
+  scale: number
   submittedAt: string
   assetUrl: string
 }
@@ -65,6 +69,7 @@ const validSizes = computed(() =>
     ? ['1', '2', '3', '4']
     : ['1'],
 )
+const hasPlacementConfig = computed(() => Boolean(shirt.value?.placementConfig?.surfaces.length))
 const totalNaira = computed(() => {
   const gift = typeof giftAmountNaira.value === 'number' ? giftAmountNaira.value : 0
   const fee = { '1': 0, '2': 500, '3': 700, '4': 1000 }[signatureSize.value] ?? 0
@@ -211,7 +216,9 @@ onMounted(async () => {
                   class="h-20 w-full object-contain"
                   loading="lazy"
                 />
-                <p class="mt-1 truncate text-xs text-[var(--muted)]">{{ signature.surfaceId }}</p>
+                <p class="mt-1 truncate text-xs text-[var(--muted)]">
+                  Signed {{ new Date(signature.submittedAt).toLocaleDateString('en-NG') }}
+                </p>
               </li>
             </ul>
           </section>
@@ -285,12 +292,21 @@ onMounted(async () => {
               size="lg"
               full-width
               :loading="submitting"
-              :disabled="!shirt.signingAvailable || !canCheckout"
+              :disabled="!shirt.signingAvailable || !hasPlacementConfig || !canCheckout"
             >
               <Gift aria-hidden="true" />
               Continue to secure checkout
             </UiButton>
           </form>
+
+          <p
+            v-if="shirt.signingAvailable && !hasPlacementConfig"
+            class="mt-4 rounded-[var(--radius-small)] border border-amber-300 bg-amber-50 p-3 text-sm leading-6 text-amber-900"
+            role="status"
+          >
+            Checkout is temporarily unavailable because this shirt has no approved signing placement
+            configuration yet.
+          </p>
 
           <p
             v-if="paymentMessage && !paymentComplete"

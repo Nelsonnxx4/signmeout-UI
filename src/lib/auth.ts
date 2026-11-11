@@ -100,3 +100,10 @@ export async function signOut() {
     throw new Error(result.error.message || 'Could not sign out.')
   }
 }
+
+export async function updateDisplayName(name: string) {
+  const result = await betterAuth.updateUser({ name })
+  if (result.error) {
+    throw new Error(result.error.message || 'Could not update your display name.')
+  }
+}

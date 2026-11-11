@@ -6,6 +6,8 @@ const {
   amountKobo,
   amountNaira,
   canSubmit,
+  cancellingWithdrawalId,
+  cancelWithdrawal,
   errorMessage,
   formatAmount,
   formatDate,
@@ -17,6 +19,13 @@ const {
   summary,
   withdrawals,
 } = useWithdrawals()
+
+function confirmCancel(withdrawalId: string) {
+  if (!window.confirm('Cancel this withdrawal request? Its reserved funds will be released.')) {
+    return
+  }
+  void cancelWithdrawal(withdrawalId)
+}
 </script>
 
 <template>
@@ -26,7 +35,8 @@ const {
         Withdraw earnings
       </h1>
       <p class="mt-2 max-w-2xl text-base leading-7 text-[var(--muted)]">
-        Request a payout of your available shirt earnings to your validated bank account.
+        Request a payout of your available shirt earnings to your validated bank account. There is
+        no additional student-verification step.
       </p>
     </header>
 
@@ -92,8 +102,8 @@ const {
         </form>
 
         <p class="mt-5 border-t border-[var(--border)] pt-4 text-sm leading-6 text-[var(--muted)]">
-          After your request is accepted, we’ll initiate the payout within 10 minutes. Your bank may
-          take longer to credit it.
+          Your payout will be initiated within 10 minutes. Your bank may take longer to credit it.
+          You can cancel while the request is pending and transfer processing has not started.
         </p>
       </section>
 
@@ -108,13 +118,14 @@ const {
           No withdrawal requests yet.
         </p>
         <div v-else class="overflow-x-auto">
-          <table class="w-full min-w-[36rem] text-left text-sm">
+          <table class="w-full min-w-[44rem] text-left text-sm">
             <thead class="bg-[var(--raised)] text-xs uppercase tracking-wide text-[var(--muted)]">
               <tr>
                 <th scope="col" class="px-5 py-3 font-semibold">Amount</th>
                 <th scope="col" class="px-5 py-3 font-semibold">Requested</th>
                 <th scope="col" class="px-5 py-3 font-semibold">Status</th>
                 <th scope="col" class="px-5 py-3 font-semibold">Details</th>
+                <th scope="col" class="px-5 py-3 font-semibold">Action</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-[var(--border)]">
@@ -132,6 +143,19 @@ const {
                 </td>
                 <td class="px-5 py-4 text-[var(--muted)]">
                   {{ withdrawal.failureReason || '—' }}
+                </td>
+                <td class="px-5 py-4">
+                  <button
+                    v-if="withdrawal.status === 'PENDING' && !withdrawal.transferReference"
+                    type="button"
+                    :disabled="cancellingWithdrawalId === withdrawal.id"
+                    class="min-h-10 rounded-[var(--radius-small)] border border-[var(--border)] px-3 text-sm font-semibold text-[var(--text)] hover:bg-[var(--raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+                    :aria-label="`Cancel withdrawal ${withdrawal.id}`"
+                    @click="confirmCancel(withdrawal.id)"
+                  >
+                    {{ cancellingWithdrawalId === withdrawal.id ? 'Cancelling…' : 'Cancel' }}
+                  </button>
+                  <span v-else class="text-[var(--muted)]">—</span>
                 </td>
               </tr>
             </tbody>
