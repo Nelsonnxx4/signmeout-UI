@@ -57,7 +57,16 @@ describe('owner onboarding flow', () => {
           )
         }
 
-        if (path === '/onboarding/status') data = status()
+        if (path === '/me') {
+          data = {
+            id: 'owner-1',
+            name: 'Owner',
+            email: 'owner@signmeout.ng',
+            emailVerified: true,
+            role: 'OWNER',
+            createdAt: '2026-11-01T00:00:00.000Z',
+          }
+        } else if (path === '/onboarding/status') data = status()
         else if (path === '/schools') data = [{ id: 'school-1', name: 'University of Lagos' }]
         else if (path === '/schools/school-1/departments')
           data = [{ id: 'department-1', name: 'Computer Science' }]
@@ -98,6 +107,16 @@ describe('owner onboarding flow', () => {
             wallet: { availableBalance: 0 },
             recentTransactions: [],
             recentSignatures: [],
+          }
+        } else if (path === '/wallet/balance') {
+          data = {
+            onboardingComplete: true,
+            hasValidBank: true,
+            totalEarned: 0,
+            pendingHolds: 0,
+            totalWithdrawn: 0,
+            availableBalance: 0,
+            lastWithdrawalStatus: null,
           }
         } else if (path === '/wallet/transactions') data = { entries: [], nextCursor: null }
         else if (path === '/shirts') data = []

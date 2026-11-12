@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { buttonVariants } from '@/components/ui/button'
+import { apiRequest } from '@/lib/api'
 
 type WithdrawalStatus =
   'PENDING' | 'PROCESSING' | 'REQUIRES_ACTION' | 'PAID' | 'FAILED' | 'REVERSED' | 'CANCELLED'
@@ -26,7 +27,6 @@ const withdrawalStatuses: WithdrawalStatus[] = [
   'CANCELLED',
 ]
 
-const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '')
 const withdrawals = ref<Withdrawal[]>([])
 const statusFilter = ref<'ALL' | WithdrawalStatus>('ALL')
 const loading = ref(false)
@@ -67,33 +67,7 @@ async function loadWithdrawals() {
   errorMessage.value = ''
 
   try {
-    const response = await fetch(`${apiBaseUrl}/api/v1/admin/withdrawals`, {
-      credentials: 'include',
-      headers: { Accept: 'application/json' },
-    })
-
-    if (response.status === 401) {
-      throw new Error('Sign in with an administrator account to view withdrawal requests.')
-    }
-    if (response.status === 403) {
-      throw new Error('Your account does not have permission to view withdrawal requests.')
-    }
-    if (!response.ok) {
-      throw new Error(`Could not load withdrawal requests (HTTP ${response.status}).`)
-    }
-
-    const payload: unknown = await response.json()
-    if (
-      typeof payload !== 'object' ||
-      payload === null ||
-      !('success' in payload) ||
-      payload.success !== true ||
-      !('data' in payload)
-    ) {
-      throw new Error('The server returned an invalid withdrawal response.')
-    }
-
-    const data = payload.data
+    const data = await apiRequest<unknown>('/admin/withdrawals')
     if (!Array.isArray(data) || !data.every(isWithdrawal)) {
       throw new Error('The server returned an invalid withdrawal list.')
     }

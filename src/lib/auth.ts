@@ -1,10 +1,11 @@
 import { createAuthClient } from 'better-auth/vue'
 
-import { getApiBaseUrl } from '@/lib/api'
+import { ApiError, apiRequest, getApiBaseUrl } from '@/lib/api'
 
 interface AuthResponse<T> {
   data: T | null
   error?: { message?: string }
+  message?: string
 }
 
 export interface AuthUser {
@@ -48,7 +49,9 @@ async function authRequest<T>(path: string, body?: unknown): Promise<T> {
 
   if (!response.ok) {
     const error = result as AuthResponse<never>
-    throw new Error(error.error?.message || `Authentication failed (HTTP ${response.status}).`)
+    throw new Error(
+      error.error?.message || error.message || `Authentication failed (HTTP ${response.status}).`,
+    )
   }
 
   return result as T
@@ -91,7 +94,14 @@ export async function getAuthSession() {
   ) {
     return null
   }
-  return session as AuthSession
+  const authSession = session as AuthSession
+  try {
+    const user = await apiRequest<AuthUser>('/me')
+    return { ...authSession, user }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null
+    throw error
+  }
 }
 
 export async function signOut() {

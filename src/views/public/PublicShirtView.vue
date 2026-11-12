@@ -10,6 +10,7 @@ import { FormField } from '@/components/ui/form'
 import { UiInput } from '@/components/ui/input'
 import { UiSelect } from '@/components/ui/select'
 import { apiRequest } from '@/lib/api'
+import { isPlacementConfig, type PlacementConfig } from '@/lib/signing'
 import { SHIRT_TYPE_DEFINITIONS, type ShirtType, type ShirtView } from '@/types/shirt'
 
 interface PublicShirt {
@@ -20,7 +21,7 @@ interface PublicShirt {
   model: { version: number; key: string }
   status: string
   signingAvailable: boolean
-  placementConfig?: { version: number; surfaces: { id: string }[] } | null
+  placementConfig?: PlacementConfig | null
 }
 
 interface PublicSignature {
@@ -69,7 +70,7 @@ const validSizes = computed(() =>
     ? ['1', '2', '3', '4']
     : ['1'],
 )
-const hasPlacementConfig = computed(() => Boolean(shirt.value?.placementConfig?.surfaces.length))
+const hasPlacementConfig = computed(() => isPlacementConfig(shirt.value?.placementConfig))
 const totalNaira = computed(() => {
   const gift = typeof giftAmountNaira.value === 'number' ? giftAmountNaira.value : 0
   const fee = { '1': 0, '2': 500, '3': 700, '4': 1000 }[signatureSize.value] ?? 0

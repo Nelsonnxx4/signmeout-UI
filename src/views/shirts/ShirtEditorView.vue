@@ -24,15 +24,15 @@ const definition = computed(() =>
 const activeView = ref<ShirtView>('front')
 const savedMessage = ref('')
 
-async function saveDraft() {
+async function refreshShirt() {
   if (!shirt.value) return
   try {
-    if (await shirts.saveDraft(shirt.value.id)) {
-      savedMessage.value = 'Draft is saved to your account.'
+    if (await shirts.refreshShirt(shirt.value.id)) {
+      savedMessage.value = 'Shirt details refreshed from your account.'
     }
   } catch (error) {
     savedMessage.value =
-      error instanceof Error ? error.message : 'Could not refresh the saved draft.'
+      error instanceof Error ? error.message : 'Could not refresh the shirt.'
   }
 }
 </script>
@@ -128,9 +128,9 @@ async function saveDraft() {
         </section>
 
         <div class="grid gap-3">
-          <UiButton variant="secondary" size="lg" full-width @click="saveDraft">
+          <UiButton variant="secondary" size="lg" full-width @click="refreshShirt">
             <Save aria-hidden="true" />
-            Save draft
+            Refresh details
           </UiButton>
           <RouterLink
             :to="`/shirts/${shirt.id}/preview`"

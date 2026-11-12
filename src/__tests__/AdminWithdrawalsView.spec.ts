@@ -56,7 +56,7 @@ describe('AdminWithdrawalsView', () => {
     const wrapper = mount(AdminWithdrawalsView)
     await flushPromises()
 
-    expect(wrapper.get('[role="alert"]').text()).toContain('Your account does not have permission')
+    expect(wrapper.get('[role="alert"]').text()).toContain('You do not have permission')
     expect(wrapper.text()).toContain('Request list unavailable. Try refreshing.')
   })
 })

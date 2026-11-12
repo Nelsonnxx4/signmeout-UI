@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { Cog, LayoutDashboard, Shirt as ShirtIcon, Wallet } from '@lucide/vue'
+import { Cog, LayoutDashboard, ShieldCheck, Shirt as ShirtIcon, Wallet } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 
 import SignMeOutLogo from '@/components/SignMeOutLogo.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useOnboardingStore } from '@/stores/onboarding'
 
 const route = useRoute()
+const auth = useAuthStore()
 const onboarding = useOnboardingStore()
 
-const navItems = [
+const navItems = computed(() => [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/shirts', label: 'Shirts', icon: ShirtIcon },
   { to: '/withdrawals', label: 'Withdraw', icon: Wallet },
-]
+  ...(auth.user?.role === 'ADMIN'
+    ? [{ to: '/admin/withdrawals', label: 'Admin', icon: ShieldCheck }]
+    : []),
+])
 
 const currentTitle = computed(() =>
   typeof route.meta.title === 'string' ? route.meta.title : 'SignMeOut',
@@ -99,7 +104,8 @@ const currentTitle = computed(() =>
     </main>
 
     <nav
-      class="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-[var(--border)] bg-[var(--sidebar)] px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:hidden"
+      class="fixed inset-x-0 bottom-0 z-20 grid border-t border-[var(--border)] bg-[var(--sidebar)] px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:hidden"
+      :class="auth.user?.role === 'ADMIN' ? 'grid-cols-4' : 'grid-cols-3'"
       aria-label="Owner mobile navigation"
     >
       <RouterLink

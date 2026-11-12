@@ -17,6 +17,10 @@ describe('onboarding store', () => {
       school: 'University of Lagos',
       department: 'Computer Science',
     })
+    onboarding.saveStudentDetails({
+      fullName: 'Nelson Orhembetyoga',
+      admissionNumber: 'SCI/2026/0148',
+    })
     onboarding.saveBank({
       bankCode: '058',
       bankName: 'Guaranty Trust Bank',
@@ -53,6 +57,6 @@ describe('onboarding store', () => {
     expect(restored.bankName).toBe('Access Bank')
     expect(restored.accountNumber).toBe('')
     expect(restored.accountLast4).toBe('7890')
-    expect(restored.nextRoute).toBe('/onboarding/commission')
+    expect(restored.nextRoute).toBe('/onboarding/student')
   })
 })

@@ -13,6 +13,7 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/layouts/AuthLayout.vue'),
+    meta: { guestOnly: true },
     children: [
       {
         path: 'signup',
@@ -139,7 +140,7 @@ export const routes: RouteRecordRaw[] = [
     path: '/admin/withdrawals',
     name: 'admin-withdrawals',
     component: () => import('@/views/admin/AdminWithdrawalsView.vue'),
-    meta: { title: 'Withdrawal requests', requiresAuth: true },
+    meta: { title: 'Withdrawal requests', requiresAuth: true, requiresAdmin: true },
   },
   {
     path: '/s/:slug',
@@ -165,54 +166,82 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const onboardingStep =
     typeof to.meta.onboardingStep === 'number' ? to.meta.onboardingStep : undefined
 
-  if (!to.meta.requiresAuth && !to.meta.requiresOnboarding && !to.meta.requiresShirt) return true
+  const needsSession = Boolean(
+    to.meta.guestOnly ||
+      to.meta.requiresAuth ||
+      to.meta.requiresAdmin ||
+      to.meta.requiresOnboarding ||
+      to.meta.requiresShirt,
+  )
+  if (!needsSession) return true
 
   const auth = useAuthStore()
-  return auth.loadSession().then(async (session) => {
-    if (!session) {
-      return {
-        name: 'login',
-        query: { redirect: to.fullPath },
-      }
+  let session
+  try {
+    session = await auth.loadSession()
+  } catch {
+    if (to.meta.guestOnly) return true
+    return {
+      name: 'login',
+      query: { redirect: to.fullPath, reason: 'session-unavailable' },
     }
+  }
 
-    if (!onboardingStep && !to.meta.requiresOnboarding && !to.meta.requiresShirt) return true
+  if (to.meta.guestOnly) {
+    if (!session) return true
 
     const onboarding = useOnboardingStore()
     await onboarding.syncFromApi()
+    return onboarding.isComplete ? { name: 'dashboard' } : onboarding.nextRoute
+  }
 
-    if (onboardingStep && onboardingStep >= 2 && !onboarding.schoolComplete) {
-      return { name: 'onboarding-school' }
+  if (!session) {
+    return {
+      name: 'login',
+      query: { redirect: to.fullPath },
     }
+  }
 
-    if (onboardingStep && onboardingStep >= 3 && !onboarding.studentDetailsComplete) {
-      return { name: 'onboarding-student' }
+  if (to.meta.requiresAdmin && session.user.role !== 'ADMIN') {
+    return { name: 'dashboard' }
+  }
+
+  if (!onboardingStep && !to.meta.requiresOnboarding && !to.meta.requiresShirt) return true
+
+  const onboarding = useOnboardingStore()
+  await onboarding.syncFromApi()
+
+  if (onboardingStep && onboardingStep >= 2 && !onboarding.schoolComplete) {
+    return { name: 'onboarding-school' }
+  }
+
+  if (onboardingStep && onboardingStep >= 3 && !onboarding.studentDetailsComplete) {
+    return { name: 'onboarding-student' }
+  }
+
+  if (onboardingStep && onboardingStep >= 4 && !onboarding.bankComplete) {
+    return { name: 'onboarding-bank' }
+  }
+
+  if (to.meta.requiresOnboarding && !onboarding.isComplete) {
+    return onboarding.nextRoute
+  }
+
+  if (to.meta.requiresShirt) {
+    const shirtId = Array.isArray(to.params.shirtId) ? to.params.shirtId[0] : to.params.shirtId
+    const shirts = useShirtsStore()
+    await shirts.load()
+
+    if (!shirtId || !shirts.getById(shirtId)) {
+      return { name: 'shirts' }
     }
+  }
 
-    if (onboardingStep && onboardingStep >= 4 && !onboarding.bankComplete) {
-      return { name: 'onboarding-bank' }
-    }
-
-    if (to.meta.requiresOnboarding && !onboarding.isComplete) {
-      return onboarding.nextRoute
-    }
-
-    if (to.meta.requiresShirt) {
-      const shirtId = Array.isArray(to.params.shirtId) ? to.params.shirtId[0] : to.params.shirtId
-      const shirts = useShirtsStore()
-      await shirts.load()
-
-      if (!shirtId || !shirts.getById(shirtId)) {
-        return { name: 'shirts' }
-      }
-    }
-
-    return true
-  })
+  return true
 })
 
 router.afterEach((to) => {

@@ -193,10 +193,10 @@ export const useOnboardingStore = defineStore('onboarding', {
       this.statusSynced = true
       this.persistDraft()
     },
-    acceptCommission() {
+    acceptCommission(policyVersion = COMMISSION_POLICY_VERSION) {
       this.commissionAccepted = true
       this.commissionAcceptedAt = new Date().toISOString()
-      this.commissionPolicyVersion = COMMISSION_POLICY_VERSION
+      this.commissionPolicyVersion = policyVersion
       this.statusSynced = true
       this.persistDraft()
     },

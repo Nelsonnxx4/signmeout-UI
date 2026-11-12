@@ -2,7 +2,7 @@
 import { ArrowRight, CircleCheck, Mail } from '@lucide/vue'
 import { useField, useForm } from 'vee-validate'
 import { nextTick, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { z } from 'zod'
 
 import { sendSignInCode, signInWithGoogle, verifySignInCode } from '@/lib/auth'
@@ -32,6 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
 const emailSchema = z
@@ -68,6 +69,11 @@ const isSending = ref(false)
 const isVerifying = ref(false)
 const successPanel = ref<HTMLElement | null>(null)
 
+function destinationAfterSignIn() {
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+  return redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/dashboard'
+}
+
 const submit = handleSubmit(async (values) => {
   submittedEmail.value = values.email.trim()
   requestError.value = ''
@@ -98,7 +104,7 @@ async function verifyCode() {
     await verifySignInCode(submittedEmail.value, otp.value)
     await auth.loadSession(true)
     isVerified.value = true
-    await router.replace('/dashboard')
+    await router.replace(destinationAfterSignIn())
   } catch (error) {
     requestError.value = error instanceof Error ? error.message : 'Could not verify the code.'
   } finally {

@@ -5,7 +5,7 @@ import { RouterLink } from 'vue-router'
 
 import ShirtPreview from '@/components/shirts/ShirtPreview.vue'
 import ShirtStatusBadge from '@/components/shirts/ShirtStatusBadge.vue'
-import { buttonVariants } from '@/components/ui/button'
+import { UiButton, buttonVariants } from '@/components/ui/button'
 import { useDashboard } from '@/composables/useDashboard'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { useShirtsStore } from '@/stores/shirts'
@@ -14,7 +14,14 @@ import { SHIRT_TYPE_DEFINITIONS } from '@/types/shirt'
 const onboarding = useOnboardingStore()
 const shirts = useShirtsStore()
 const dashboard = useDashboard()
-const { errorMessage: dashboardError, loading: dashboardLoading, summary, transactions } = dashboard
+const {
+  errorMessage: dashboardError,
+  loading: dashboardLoading,
+  loadingMore,
+  nextCursor,
+  summary,
+  transactions,
+} = dashboard
 
 const formatNaira = (amountKobo: number) =>
   new Intl.NumberFormat('en-NG', {
@@ -287,6 +294,11 @@ onMounted(() => {
           </p>
         </li>
       </ul>
+      <div v-if="nextCursor" class="border-t border-[var(--border)] p-4 text-center">
+        <UiButton variant="secondary" size="sm" :loading="loadingMore" @click="dashboard.loadMore">
+          Load more activity
+        </UiButton>
+      </div>
     </section>
   </section>
 </template>

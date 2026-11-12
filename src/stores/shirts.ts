@@ -102,11 +102,14 @@ export const useShirtsStore = defineStore('shirts', {
       this.shirts.push(shirt)
       return shirt
     },
-    async saveDraft(shirtId: string) {
+    async refreshShirt(shirtId: string) {
       const shirt = this.getById(shirtId)
       if (!shirt) return false
 
-      await this.load(true)
+      const updated = mapShirt(
+        await apiRequest<ApiShirt>(`/shirts/${encodeURIComponent(shirtId)}`),
+      )
+      this.shirts = this.shirts.map((item) => (item.id === shirtId ? updated : item))
       return true
     },
     async publish(shirtId: string) {

@@ -26,11 +26,12 @@ const requestError = ref('')
 const submit = handleSubmit(async () => {
   requestError.value = ''
   try {
+    const policyVersion = onboarding.commissionPolicyVersion || COMMISSION_POLICY_VERSION
     await apiRequest('/onboarding/commission', {
       method: 'POST',
-      body: JSON.stringify({ accepted: true, policyVersion: COMMISSION_POLICY_VERSION }),
+      body: JSON.stringify({ accepted: true, policyVersion }),
     })
-    onboarding.acceptCommission()
+    onboarding.acceptCommission(policyVersion)
     await router.push('/dashboard')
   } catch (error) {
     requestError.value = error instanceof Error ? error.message : 'Could not save your acceptance.'

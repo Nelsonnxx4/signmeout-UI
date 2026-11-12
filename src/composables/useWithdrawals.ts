@@ -1,5 +1,7 @@
 import { computed, onMounted, ref } from 'vue'
 
+import { ApiError, apiRequest } from '@/lib/api'
+
 type WithdrawalStatus =
   'PENDING' | 'PROCESSING' | 'REQUIRES_ACTION' | 'PAID' | 'FAILED' | 'REVERSED' | 'CANCELLED'
 
@@ -30,7 +32,6 @@ const withdrawalStatuses: WithdrawalStatus[] = [
 ]
 const payoutNotice =
   'Your payout will be initiated within 10 minutes. Your bank may take longer to credit it.'
-const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '')
 
 export function useWithdrawals() {
   const summary = ref<WithdrawalSummary | null>(null)
@@ -41,6 +42,7 @@ export function useWithdrawals() {
   const cancellingWithdrawalId = ref<string | null>(null)
   const errorMessage = ref('')
   const successMessage = ref('')
+  const withdrawalAttempt = ref<{ amountKobo: number; idempotencyKey: string } | null>(null)
 
   const amountKobo = computed(() =>
     typeof amountNaira.value === 'number' ? Math.round(amountNaira.value * 100) : 0,
@@ -92,46 +94,14 @@ export function useWithdrawals() {
     )
   }
 
-  async function readData(response: Response): Promise<unknown> {
-    const payload: unknown = await response.json()
-    if (!isRecord(payload) || payload.success !== true || !('data' in payload)) {
-      throw new Error('The server returned an invalid withdrawal response.')
-    }
-    return payload.data
-  }
-
-  async function responseError(response: Response): Promise<string> {
-    if (response.status === 401) return 'Sign in to request a withdrawal.'
-
-    const payload: unknown = await response.json().catch(() => null)
-    if (isRecord(payload) && isRecord(payload.error) && typeof payload.error.message === 'string') {
-      return payload.error.message
-    }
-    return `Could not complete the request (HTTP ${response.status}).`
-  }
-
   async function loadWithdrawals() {
     loading.value = true
     errorMessage.value = ''
 
     try {
-      const [summaryResponse, historyResponse] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/v1/withdrawals/summary`, {
-          credentials: 'include',
-          headers: { Accept: 'application/json' },
-        }),
-        fetch(`${apiBaseUrl}/api/v1/withdrawals`, {
-          credentials: 'include',
-          headers: { Accept: 'application/json' },
-        }),
-      ])
-
-      if (!summaryResponse.ok) throw new Error(await responseError(summaryResponse))
-      if (!historyResponse.ok) throw new Error(await responseError(historyResponse))
-
       const [summaryData, historyData] = await Promise.all([
-        readData(summaryResponse),
-        readData(historyResponse),
+        apiRequest<unknown>('/withdrawals/summary'),
+        apiRequest<unknown>('/withdrawals'),
       ])
       const nextSummary = parseSummary(summaryData)
       if (!nextSummary || !Array.isArray(historyData) || !historyData.every(isWithdrawal)) {
@@ -153,39 +123,57 @@ export function useWithdrawals() {
   async function requestWithdrawal() {
     if (!canSubmit.value) return
 
+    if (withdrawalAttempt.value && withdrawalAttempt.value.amountKobo !== amountKobo.value) {
+      errorMessage.value =
+        'The previous withdrawal outcome is uncertain. Retry with the same amount before starting a different request.'
+      return
+    }
+
+    const attempt =
+      withdrawalAttempt.value ??
+      {
+        amountKobo: amountKobo.value,
+        idempotencyKey:
+          globalThis.crypto?.randomUUID?.() ??
+          `withdrawal-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      }
+    withdrawalAttempt.value = attempt
+
     submitting.value = true
     errorMessage.value = ''
     successMessage.value = ''
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/v1/withdrawals`, {
+      const data = await apiRequest<unknown>('/withdrawals', {
         method: 'POST',
-        credentials: 'include',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
-          amountKobo: amountKobo.value,
-          idempotencyKey: globalThis.crypto?.randomUUID?.() ?? `withdrawal-${Date.now()}`,
+          amountKobo: attempt.amountKobo,
+          idempotencyKey: attempt.idempotencyKey,
         }),
       })
-
-      if (!response.ok) throw new Error(await responseError(response))
-
-      const data = await readData(response)
       if (!isWithdrawal(data)) {
         throw new Error('The server returned an invalid withdrawal request.')
       }
 
+      withdrawalAttempt.value = null
       successMessage.value = payoutNotice
       amountNaira.value = ''
       await loadWithdrawals()
     } catch (error) {
-      errorMessage.value =
+      const definitiveRejection =
+        error instanceof ApiError &&
+        error.status >= 400 &&
+        error.status < 500 &&
+        error.code !== 'WITHDRAWAL_RETRY_REQUIRED'
+      if (definitiveRejection) withdrawalAttempt.value = null
+
+      const message =
         error instanceof Error
           ? error.message
           : 'An unexpected error occurred while requesting payout.'
+      errorMessage.value = definitiveRejection
+        ? message
+        : `${message} Retry the same amount to safely check this request.`
     } finally {
       submitting.value = false
     }
@@ -197,18 +185,10 @@ export function useWithdrawals() {
     errorMessage.value = ''
     successMessage.value = ''
     try {
-      const response = await fetch(
-        `${apiBaseUrl}/api/v1/withdrawals/${encodeURIComponent(withdrawalId)}/cancel`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          headers: { Accept: 'application/json' },
-        },
+      const data = await apiRequest<unknown>(
+        `/withdrawals/${encodeURIComponent(withdrawalId)}/cancel`,
+        { method: 'POST' },
       )
-
-      if (!response.ok) throw new Error(await responseError(response))
-
-      const data = await readData(response)
       if (!isWithdrawal(data)) {
         throw new Error('The server returned an invalid withdrawal response.')
       }

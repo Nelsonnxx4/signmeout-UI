@@ -27,8 +27,7 @@ const statusMessage = ref('')
 
 const publicUrl = computed(() => {
   if (!shirt.value) return ''
-  const origin = typeof window === 'undefined' ? '' : window.location.origin
-  return `${origin}/s/${shirt.value.slug}`
+  return shirt.value.shareUrl || `${window.location.origin}/s/${shirt.value.slug}`
 })
 
 async function publishShirt() {
@@ -142,8 +141,7 @@ async function copyLink() {
             Share link
           </h2>
           <p class="mt-2 text-sm leading-6 text-[var(--muted)]">
-            This link works in the current frontend session. Backend publishing will make it
-            available across devices.
+            Share this public link with classmates who want to contribute and sign your shirt.
           </p>
           <UiInput
             id="public-shirt-link"
@@ -162,8 +160,7 @@ async function copyLink() {
         <section v-else class="rounded-[var(--radius-small)] bg-[var(--brand-soft)] p-5">
           <h2 class="text-base font-semibold text-[var(--text)]">Ready to publish?</h2>
           <p class="mt-2 text-sm leading-6 text-[var(--muted)]">
-            Publishing creates the public preview link. Gifts and paid signing are the next product
-            slice.
+            Publishing activates the public link and allows classmates to open the shirt.
           </p>
         </section>
 
